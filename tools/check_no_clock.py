@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""AST 守门：源码零系统时钟（K7）。
+
+判定的时间只能来自快照元数据。读系统时钟会让同一输入在不同时刻给出不同账本，
+"两次运行逐字节一致"当场失效，而且失败得很隐蔽（只有在跨秒边界的两次运行才复现）。
+
+禁：`datetime.now` / `datetime.today` / `datetime.utcnow` / `datetime.fromtimestamp` /
+`time.time` / `time.monotonic` / `time.perf_counter` / `time.localtime` / `time.gmtime`。
+
+变异验证：在 `mailvault/render.py` 里加一句 `import time; time.time()` → 本脚本必须报红。
+
+退出码：0 通过 / 1 有违规。
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import sys
+from pathlib import Path
+
+FORBIDDEN = {
+    "datetime.datetime.now",
+    "datetime.datetime.today",
+    "datetime.datetime.utcnow",
+    "datetime.datetime.fromtimestamp",
+    "datetime.datetime.utcfromtimestamp",
+    "datetime.date.today",
+    "time.time",
+    "time.monotonic",
+    "time.perf_counter",
+    "time.localtime",
+    "time.gmtime",
+    "time.ctime",
+}
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def scan(root: Path) -> tuple[list[str], int]:
+    violations: list[str] = []
+    scanned = 0
+    for path in sorted((root / "mailvault").rglob("*.py")):
+        rel = path.relative_to(root).as_posix()
+        scanned += 1
+        source = path.read_text(encoding="utf-8")
+        try:
+            tree = ast.parse(source, filename=str(path))
+        except SyntaxError as exc:
+            violations.append("%s:%s 语法错误 %s" % (rel, exc.lineno, exc.msg))
+            continue
+
+        aliases = _aliases(tree)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            dotted = _dotted(node.func, aliases)
+            if dotted in FORBIDDEN:
+                violations.append("%s:%d 调用 %s（判定不许读系统时钟）"
+                                  % (rel, node.lineno, dotted))
+    return violations, scanned
+
+
+def _aliases(tree: ast.AST) -> dict[str, str]:
+    """把 `from datetime import datetime as dt` 这类别名映射回全名。"""
+    mapping: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                mapping[alias.asname or alias.name.split(".")[0]] = alias.name
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            for alias in node.names:
+                mapping[alias.asname or alias.name] = "%s.%s" % (node.module, alias.name)
+    return mapping
+
+
+def _dotted(func: ast.AST, aliases: dict[str, str]) -> str:
+    if isinstance(func, ast.Attribute):
+        base = _dotted(func.value, aliases)
+        return "%s.%s" % (base, func.attr) if base else func.attr
+    if isinstance(func, ast.Name):
+        return aliases.get(func.id, func.id)
+    return ""
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="AST 守门：零系统时钟")
+    parser.add_argument("--root", default=None)
+    args = parser.parse_args(argv)
+    root = Path(args.root).resolve() if args.root else ROOT
+
+    violations, scanned = scan(root)
+    print("零系统时钟守门（AST）· 时间只许来自快照元数据")
+    print("=" * 60)
+    if scanned == 0:
+        print("FAIL  扫了 0 个源文件——判据是空的")
+        return 1
+    for item in violations:
+        print("FAIL  %s" % item)
+    if not violations:
+        print("PASS  %d 个源文件零系统时钟调用" % scanned)
+    print("=" * 60)
+    print("这轮扫到：%d 个源文件" % scanned)
+    print("结论: %s" % ("全绿" if not violations else "%d 处违规" % len(violations)))
+    return 0 if not violations else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

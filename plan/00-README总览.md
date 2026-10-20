@@ -1,5 +1,7 @@
 # 10-21-mailvault 项目总览
 
+> 本项目遵循 `ai-tool-project-sprint` 方法论；布局门 `tools/check_sprint_layout.py`；装订日期 2026-10-21。
+
 离线邮件认证判定账本。纯本地 Python CLI。审计阶段零网络。
 
 **定位宣言**
@@ -77,14 +79,15 @@ M4 会输出形如"报文头里写 `spf=pass`，我用同一份快照算出 `fai
 
 ## 里程碑
 
-| 里程碑 | 内容 | 完成判据（DoD） |
-|---|---|---|
-| **M1 数据先行** | `snap.json` schema 定稿、抓取器（唯一联网点）、RFC 7208 测试集接入（pyspf `test/rfc7208-tests.yml`，保留 BSD 式版权声明）、PSL 冻结件 | schema 版本化；测试集可被本地 runner 读取；断网下测试集能跑（用内置 DNS 桩） |
-| **M2 SPF** | `check_host()` 确定性求值 + 预算账本 + 完整 include 树 | 203 用例 ≥95% 通过；失败逐条登记；两次运行字节级一致 |
-| **M3 DKIM** | 验签 + 五类失败 fixture + `undecidable` 语义 | RFC 6376 §3.4/§3.5、RFC 8301 §3.2 落地；无 key 不判 fail |
-| **M4 DMARC** | tree walk + 双算对齐 + 处置 + PSL 版本 + 旧标签告警 | RFC 9989 B.4.1–B.4.3 复现；`pct` 告警 |
-| **M5 对账与 what-if** | 三方对账（双解释 + strict 模式）+ 差分 + RUA 关联 | 3 个对账 fixture 通过；差分可复算；标注报告期口径 |
-| **M6 发布** | `git tag v1.0.0` + GitHub Release 附产物 + 发布留档三件套 | 见下 |
+| 里程碑 | 内容 | 完成判据（DoD） | 状态 |
+|---|---|---|---|
+| **M0** | 方法论装订 + 计划套件 00–06 + 可运行骨架 | `AGENTS.md` + 布局门 + `plan/00` 装订行；CLI 四条子命令注册；AST 守门（零网络/零时钟/单一序列化）；`pytest` 全绿 | ✅ 2026-10-21 |
+| **M1 数据先行** | `snap.json` schema 定稿、抓取器（唯一联网点）、RFC 7208 测试集接入（pyspf `test/rfc7208-tests.yml`，保留 BSD 式版权声明）、PSL 冻结件 | schema 版本化；测试集可被本地 runner 读取；断网下测试集能跑（用内置 DNS 桩） | ⬜ 未开始 |
+| **M2 SPF** | `check_host()` 确定性求值 + 预算账本 + 完整 include 树 | 203 用例 ≥95% 通过；失败逐条登记；两次运行字节级一致 | ⬜ 未开始 |
+| **M3 DKIM** | 验签 + 五类失败 fixture + `undecidable` 语义 | RFC 6376 §3.4/§3.5、RFC 8301 §3.2 落地；无 key 不判 fail | ⬜ 未开始 |
+| **M4 DMARC** | tree walk + 双算对齐 + 处置 + PSL 版本 + 旧标签告警 | RFC 9989 B.4.1–B.4.3 复现；`pct` 告警 | ⬜ 未开始 |
+| **M5 对账与 what-if** | 三方对账（双解释 + strict 模式）+ 差分 + RUA 关联 | 3 个对账 fixture 通过；差分可复算；标注报告期口径 | ⬜ 未开始 |
+| **M6 发布** | `git tag v1.0.0` + GitHub Release 附产物 + 发布留档三件套 | 见 `plan/05` §4 | ⬜ 未开始 |
 
 **M6 DoD 三件套**：① `git tag` 与 GitHub Release（附 `verdict.json`/`verdict.md` 示例、fixture 清单、PSL 版本）；② 发布留档（README 首屏可跑通 + `data/README.md` 数据纪律 + `docs/ledger-format.md`）；③ 仓库公开发布，署名 `yuluo554`。
 

@@ -1,0 +1,12 @@
+include LICENSE
+include README.md
+include AGENTS.md
+include pyproject.toml
+include .gitattributes
+include data/README.md
+include docs/*.md
+include plan/*.md
+recursive-include tools *.py
+recursive-include mailvault *.py
+recursive-include mailvault/data *.dat *.json
+recursive-include fixtures *.json *.yml *.md *.eml *.pem *.txt

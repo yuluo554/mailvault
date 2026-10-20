@@ -1,0 +1,21 @@
+# 源码归一 + 快照冻结（两类规则必须分开）
+* text=auto eol=lf
+
+# 被 sha256 登记 / 逐字节断言的产物：git 不许碰字节
+*.png binary
+*.jpg binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.pem binary
+*.der binary
+
+# PSL 冻结件：字节即版本证据，克隆时不得归一
+mailvault/data/public_suffix_list.dat -text
+
+# RFC 7208 测试集原样入仓：保留上游字节（含其 BSD 式许可头）
+fixtures/spf/rfc7208-tests.yml -text
+
+# Windows 专用脚本才允许 CRLF（当前无）
+*.bat text eol=crlf
+*.cmd text eol=crlf
