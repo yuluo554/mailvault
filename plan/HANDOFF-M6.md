@@ -134,11 +134,11 @@ M5（三方对账 + what-if 差分 + RUA 关联）+ M6（发布）**，均 2026-
 |---|---|---|
 | 1 | 脱敏四步 + 产物扫描 | `examples/` 4 用例 / 10 份真产物（`gen_examples.py`，真 CLI 跑真 fixture + `--strict-evidence`，`--check` 逐字节 + 退出码幂等）；禁词门 **PASS 11 份**（从 SKIP 转真判定）；卫生门扫描面扩到 `fixtures/` + `examples/` → **PASS 108 份**；样例绝对路径直扫 PASS（`tests/test_examples.py`） |
 | 2 | 干净环境验证 | **三种形态各 18/18**：`git archive` 目录 / 本地 bare clone round-trip / **发布件真下载解包**。`pytest` 470 passed；三类变异 11/11 · 8/8 · 11/11；五个生成器 `--check` 幂等 |
-| 3 | 建远端 + 首推 + CI run id 入库 | `gh repo create yuluo554/mailvault --public` 完成；**push 数 = run 数 = 5**；run id 全部回填（见 `plan/RELEASE-M6.md` §2.2） |
+| 3 | 建远端 + 首推 + CI run id 入库 | `gh repo create yuluo554/mailvault --public` 完成；**push 数 = run 数 = 6**（截至 `858f944`；不变量「每次 push 恰好一条 run」由 `--online` 断言）；run id 全部回填（见 `plan/RELEASE-M6.md` §2.2） |
 | 4 | 定版 + `v1.0.0` tag | `__version__` `0.1.0.dev0` → `1.0.0`（只改一处）；`tests/test_version_consistency.py` 4 条；tag 已推 |
 | 5 | GitHub Release | 已发布，附 `git archive` 源码包（sha256 `4140fcf9…8df524`）+ 4 例示例产物 + 五组 fixture 清单 + PSL 版本/日期/sha256 |
 | 6 | `plan/RELEASE-M6.md` 两栏 + 覆盖对账 | 两栏 + `覆盖对账` 小节 + **9 条三态行**；`LAYOUT.RELEASE` 实测 `两栏:True 覆盖对账:True 三态行:9` |
-| 7 | 发布门三模可复跑 | `tools/check_release.py`：`--offline` 7 条全绿（CI 两 job 都跑）、`--pre-tag` tag 前全绿 / tag 后如期红、`--online` **17 条全绿** |
+| 7 | 发布门三模可复跑 | `tools/check_release.py`：`--offline` 7 条全绿（CI 两 job 都跑）、`--pre-tag` tag 前全绿 / tag 后如期红、`--online` **19 条全绿** |
 | 8 | 四处状态副本翻 ✅ + V 表更新 | 四处一起翻 ✅（`LAYOUT.STATUS` 4 处 × 7 里程碑全一致）；V1/V2/V6 转 ✅，V7/V8/V9 仍 ⬜（只能等真实用户反馈） |
 | 9 | `docs/backlog.md` 的 G17/G19 是否进二期 | 未动（二期决策，不属发布面） |
 
@@ -224,6 +224,7 @@ M5（三方对账 + what-if 差分 + RUA 关联）+ M6（发布）**，均 2026-
 | **Git Bash 的 `tar` 把 `C:` 当远端主机** | `tar -xzf C:/...tar.gz` → `Cannot connect to C: resolve failed` | 用 `py -3.12 -c "import tarfile..."` 解包，或 `cygpath -u` 后传 POSIX 路径 |
 | **布局门变异的靶子会随进度失效（M06 又踩一次）** | 全部里程碑 ✅ 后，"找待办里程碑翻成完成"找不到靶子 | `m06` 改为**两态探测**：有待办就翻成完成，全完成就把一个已完成翻回待办（都是单副本冲突）。另加"必须改动字节"的断言，防静默空跑 |
 | **发布门的判据不能写成"所有历史 run 都绿"** | 历史不可变：首推的 2 条红 run 永远红，那样写会得到一条永远红、然后被删掉的门 | 判据改为「**认证发布树的 run 全绿**」+「**历史失败逐条登记**」（漏记即红）。假门的反面不是更严，是**判据指错了对象** |
+| **`push 数 = run 数` 写成绝对数字是自指的** | 留档写 `5 = 5` → 下次改文档的提交让它变 6 → 再改数字再推 → 无穷 | 判据落在**不变量**：每次 push 恰好一条 run（按「提交 + ref」去重——同一提交既作分支 HEAD 又作 tag 指向是**合法**的两条）+ 两个数字彼此相等 + 计数锚在一个**可核对的提交**上。绝对数字只作快照保留 |
 
 ---
 
@@ -272,10 +273,10 @@ M5（三方对账 + what-if 差分 + RUA 关联）+ M6（发布）**，均 2026-
 
 - [x] 脱敏四步：禁词门 **PASS 11 份**（从 `SKIP` 转真判定）；卫生门 **PASS 108 份**（面扩到 `examples/`）；样例无绝对路径；样例 `tool_version` 全部 `=1.0.0`
 - [x] 干净环境验证：`git archive` 目录 / 本地 bare clone / **发布件真下载解包** 三种形态各 **18/18**
-- [x] 建仓 `gh repo create yuluo554/mailvault --public` + 首推；**push 数 = run 数 = 5**；run id 已回填
+- [x] 建仓 `gh repo create yuluo554/mailvault --public` + 首推；**push 数 = run 数 = 6**；run id 已回填
 - [x] `git tag v1.0.0`（annotated，重指到 `c84b0c8`）+ GitHub Release 已发布
 - [x] `plan/RELEASE-M6.md` 两栏 + 覆盖对账 + 9 条三态行（`LAYOUT.RELEASE` 实测通过）
-- [x] 发布门三态可复跑：`--offline` 7 条 / `--pre-tag` 9 条 / `--online` **17 条** 全绿（各自只在成立的那一态为绿）
+- [x] 发布门三态可复跑：`--offline` 7 条 / `--pre-tag` 9 条 / `--online` **19 条** 全绿（各自只在成立的那一态为绿）
 - [x] 版本三处一致（`tests/test_version_consistency.py` 4 条）；`pytest` **470 passed**
 - [x] 变异验证：布局 **11/11**（M06 已改为"全完成态也能构造单副本冲突"）+ AST **8/8**（新增 A07/A08）+ 语义 **11/11**
 - [x] 发布件复核 V6：`gh release download` → sha256 `4140fcf9…8df524` 与本地 `git archive` 及 GitHub asset digest **三方一致**；解包后 18/18
@@ -305,7 +306,7 @@ py -3.12 tools/offline_smoke.py
 # 2b) 发布门三态（CI 只跑 --offline；--pre-tag 在 tag 后必然红，属预期）
 py -3.12 tools/check_release.py --offline
 py -3.12 tools/check_release.py --pre-tag     # 仅 tag 之前
-py -3.12 tools/check_release.py --online      # 推送/Release 之后（17 条判据）
+py -3.12 tools/check_release.py --online      # 推送/Release 之后（19 条判据）
 
 # 3) 测试与 CLI
 py -3.12 -m pip install -e ".[dev]"      # 开发期需要 pytest + pyyaml + cryptography

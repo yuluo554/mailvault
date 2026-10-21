@@ -143,7 +143,9 @@ Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠
 | CI run id（修复后 `main`） | `39526981564` |
 | CI run id（修复后 tag `v1.0.0` 重指） | `39527171060` |
 | CI run id（收尾提交 `d76829c`） | `39528967472` |
-| push 数 = run 数 | `5 = 5` |
+| CI run id（计数更新提交 `858f944`） | `39529331411` |
+| push 数 = run 数 | `6 = 6` |
+| 计数截至提交 | `858f944`（此后只改文档；「每次 push 恰好一条 run」这个不变量由 `--online` 断言，不再靠改数字维持） |
 | 远端 | `git@github.com:yuluo554/mailvault.git`（公开） |
 | GitHub Release | https://github.com/yuluo554/mailvault/releases/tag/v1.0.0 |
 | tag OID（annotated tag 对象） | `fbbd25fc10375e3affcb8ca995e020a98c9fe0ba` |
@@ -183,16 +185,22 @@ offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 +
 |---|---|---|
 | `--offline` | CI 两个 job + 本机 | **全绿**（7 条判据；不碰网络，`--network none` 容器里也全绿） |
 | `--pre-tag` | tag **之前**（本机） | tag 前全绿（9 条）；**tag 之后必然红**（`tag 尚未创建` 已不成立）——这正是三态分开的意义 |
-| `--online` | 推送 / Release **之后**（本机） | **全绿**（17 条判据） |
+| `--online` | 推送 / Release **之后**（本机） | **全绿**（19 条判据） |
 
-`--online` 的关键两条判据（不是"所有历史 run 都绿"——历史不可变，那样写只会得到一条永远红、
+`--online` 的关键判据（不是"所有历史 run 都绿"——历史不可变，那样写只会得到一条永远红、
 然后被人删掉的假门）：
 
 | 判据 | 实测 |
 |---|---|
 | **认证发布树的 run 全绿** | tag 提交 `c84b0c8` 上的 run `39526981564` / `39527171060` **均 success** |
 | **历史失败逐条登记** | 首推的 2 条红 run（`39526291036` / `39526365982`）**都在留档里**；漏记即红 |
-| push 数 = run 数 与远端一致 | 留档 `5 = 5`，远端真实 push 构建 5 条 |
+| **每次 push 恰好一条 run** | 6 次 push 各一条（按「提交 + ref」去重：同一提交既作 `main` HEAD 又作 tag 指向，就该有两条 run） |
+| **计数锚在可核对的提交上** | `计数截至提交` = `858f944`，仓库里真实存在 |
+
+**一处自指陷阱（值得记）**：`push 数 = run 数` 写成绝对数字后，**每改一次文档就会让它 +1**，
+于是每推一次就要再改一次数字、再推一次——这正是"tag 树内不写自指字面值"那条纪律在计数上的翻版。
+处置：判据改落在**不变量**上（每次 push 恰好一条 run、两个数字彼此相等、计数锚在一个可核对的提交上），
+绝对数字只作为**截至某提交的快照**保留。
 
 ---
 
@@ -206,7 +214,7 @@ offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 +
 | 1 | 脱敏四步 + 产物扫描 | 禁词门 PASS 11 份；卫生门 PASS 108 份；样例绝对路径直扫 PASS | 实现 |
 | 2 | 干净环境验证（`git archive` 目录 / 本地 bare clone / 发布件解包） | 见 §1.7 与 §2.4，三种形态各 **18/18** | 实现 |
 | 3 | 发布件**真下载 + 解包**复核（V6） | §2.4：sha256 与 asset digest 一致，解包后 18/18 | 实现 |
-| 4 | 建仓 `gh repo create` + 首推 + CI run id 入库（V1、G4） | §2.1–§2.3：push 数 = run 数 = 5；run id 已回填 | 实现 |
+| 4 | 建仓 `gh repo create` + 首推 + CI run id 入库（V1、G4） | §2.1–§2.3：push 数 = run 数 = 6；run id 已回填 | 实现 |
 | 5 | `git tag v1.0.0` + GitHub Release 三件套 | §2.2：Release 页在位，附源码包 + 示例产物 + fixture 清单 + PSL 版本 | 实现 |
 | 6 | Python 3.11 行为（V2、G5） | CI 矩阵 `py3.11 · ubuntu` 与 `py3.11 · windows` 两个 job 全步骤 success；**本机不适用**（只有 3.8.8 / 3.12.10） | 不适用（已由 CI 覆盖） |
 | 7 | CI 跨平台实跑（ubuntu / windows × 3.11 / 3.13） | §2.3：run `39526981564` 与 `39527171060` 各 5/5 job success | 实现 |

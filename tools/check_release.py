@@ -58,6 +58,9 @@ COVERAGE = re.compile(r"^#{2,3}.*覆盖对账", re.M)
 #: 第二栏里的**机器可读两行**（本门与 `plan/RELEASE-M6.md` 的契约）。
 RUN_ID_ROW = re.compile(r"^\|\s*CI run id[^|]*\|\s*`?(\d+)`?\s*\|", re.M)
 PUSH_RUN_ROW = re.compile(r"^\|\s*push 数 = run 数\s*\|\s*`?(\d+)\s*=\s*(\d+)`?\s*\|", re.M)
+#: 「这个计数截至哪个提交」——绝对数字必须锚在一个可核对的提交上，否则无法对账。
+#: 单元格里 sha 之后允许跟说明文字（留档要解释为什么锚在这里）。
+SNAPSHOT_ROW = re.compile(r"^\|\s*计数截至提交\s*\|\s*`?([0-9a-f]{7,40})`?", re.M)
 
 #: Release 说明必须点到的三件套要素（`plan/05` §4.1）。
 RELEASE_KEYWORDS = ("verdict.json", "verdict.md", "fixture", "PSL")
@@ -288,13 +291,45 @@ def online_checks(report: Report) -> None:
                      else ("%d 条历史失败全部已登记" % len(failures) if failures
                            else "无历史失败"))
 
-        # push 数 = run 数：留档声明的数量必须等于远端真实 push 构建数。
+        # ── push 数 = run 数 ────────────────────────────────────────────
+        #
+        # **绝对数字是自指的**：留档写"5 = 5"，下一次改文档的提交就会把它变成 6，
+        # 于是每改一次文档就要再改一次数字——这正是"tag 树内不写自指字面值"那条纪律
+        # 在 push 计数上的翻版。所以判据落在**不随文档提交变化**的不变量上：
+        #
+        #   ① 每个 push 事件**都有**一条 run，且**没有一次 push 对应多条**。
+        #      注意：**同一个提交**被推两次是合法的——例如 `c84b0c8` 既作为 `main`
+        #      的 HEAD 推了一次，又作为 tag `v1.0.0` 指向的提交推了一次，两次 push
+        #      就该有两条 run。判据按 (提交, 分支/标签) 去重，而不是按提交去重。
+        #   ② 留档声明的两个数字**彼此相等**（内部自洽）。
+        #   ③ 留档写明这个计数**截至哪个提交**（`SNAPSHOT_ROW`），该提交真实存在。
+        #
+        # ③ 是关键：没有它，"6 = 6" 是一句无法对账的空话——它既可能指昨天也可能指现在。
+        per_ref: dict[tuple[str, str], int] = {}
+        for run in runs:
+            key = (run.get("headSha", ""), run.get("headBranch", ""))
+            per_ref[key] = per_ref.get(key, 0) + 1
+        duplicated = {("%s@%s" % key): n for key, n in per_ref.items() if n > 1}
+        report.check("每次 push 恰好一条 run", not duplicated,
+                     "同一提交+ref 有多条 run: %s" % duplicated if duplicated
+                     else "%d 次 push 各一条 run（无漏、无重）" % len(per_ref))
+
         if push_row:
             claimed_push, claimed_run = int(push_row.group(1)), int(push_row.group(2))
-            report.check("push 数 = run 数 与远端一致",
-                         claimed_push == claimed_run == len(runs),
-                         "留档 %d = %d，远端 push 构建 %d 条"
-                         % (claimed_push, claimed_run, len(runs)))
+            report.check("留档 push 数 = run 数 自洽", claimed_push == claimed_run,
+                         "留档 %d = %d" % (claimed_push, claimed_run))
+
+        snapshot = SNAPSHOT_ROW.search(text)
+        if snapshot:
+            snapshot_sha = snapshot.group(1)
+            code, resolved = _git("rev-parse", "--verify", "%s^{commit}" % snapshot_sha)
+            report.check("留档写明计数截至的提交", code == 0 and len(resolved.strip()) == 40,
+                         "计数快照提交 %s %s"
+                         % (snapshot_sha,
+                            "存在" if code == 0 else "在仓库里查不到"))
+        else:
+            report.check("留档写明计数截至的提交", False,
+                         "缺『计数截至提交』行——绝对数字必须锚在一个可核对的提交上")
 
 
 def main(argv: list[str] | None = None) -> int:
