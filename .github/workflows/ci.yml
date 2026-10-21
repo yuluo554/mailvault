@@ -37,7 +37,7 @@ jobs:
       - name: Layout gate mutation verification (11 mutations must go red)
         run: python tools/verify_layout_gate.py
 
-      - name: AST gate mutation verification (6 mutations must go red)
+      - name: AST gate mutation verification (8 mutations must go red)
         run: python tools/verify_ast_gates.py
 
       - name: Module mutation verification (11 semantic faults must go red)
@@ -49,6 +49,7 @@ jobs:
           python tools/gen_dmarc_fixtures.py --check
           python tools/gen_reconcile_fixtures.py --check
           python tools/gen_whatif_fixtures.py --check
+          python tools/gen_examples.py --check
 
       - name: AST gate - no network outside net.py
         run: python tools/check_no_network.py
@@ -67,6 +68,11 @@ jobs:
 
       - name: Offline smoke (audit never opens a socket)
         run: python tools/offline_smoke.py
+
+      # 发布门的 `--offline` 档不碰网络，所以在 CI 里是可跑的那一档。
+      # `--pre-tag` 会在 tag 推送时假红（tag 已存在），`--online` 需要远端状态——都不在 CI 跑。
+      - name: Release gate (offline mode)
+        run: python tools/check_release.py --offline
 
       - name: Tests
         run: python -m pytest
@@ -90,3 +96,7 @@ jobs:
 
       - name: Offline smoke inside network-less container
         run: python tools/offline_smoke.py
+
+      # `--network none` 容器里能跑通 = 发布门 `--offline` 档真的不需要网络。
+      - name: Release gate offline mode needs no network
+        run: python tools/check_release.py --offline

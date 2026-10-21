@@ -41,10 +41,11 @@ py -3.12 tools/verify_layout_gate.py
 | `tools/check_no_network.py` | `mailvault/` 里除 `net.py` 外零 `socket/ssl/http/urllib` import | 在 `spf.py` 加 `import socket` → 红 |
 | `tools/check_no_direct_json.py` | `json.dumps/dump` 只准出现在 `canonical.py` | 在 `cli.py` 加一句 `json.dumps({})` → 红 |
 | `tools/check_no_clock.py` | 源码零 `datetime.now/today/utcnow`、`time.time/monotonic`；**唯一豁免** `net.py::utc_now_z`（按函数行区间，同文件别处仍红） | 加一句 `time.time()` → 红；在 net.py 非豁免函数里写 `time.time()` → 红（A06） |
-| `tools/check_fixture_hygiene.py` | fixture 只用保留域 / 文档 IP 段；上游原样件逐条登记豁免并打印理由 | 放一条真实域名 → 红 |
-| `tools/check_forbidden_terms.py` | 样例产物在 strict 口径下无禁词（M0 无产物 → SKIP 并打印扫描数） | 放一份含"攻击"的 verdict → 红 |
+| `tools/check_fixture_hygiene.py` | `fixtures/` + `examples/` 只用保留域 / 文档 IP 段；上游原样件逐条登记豁免并打印理由 | 放一条真实域名到 `fixtures/`（A04）或 `examples/`（A07）→ 红 |
+| `tools/check_forbidden_terms.py` | 样例产物在 strict 口径下无禁词（M0 无产物 → SKIP 并打印扫描数；M6 起有 `examples/` → 真判定） | 放一份含"攻击"的 verdict → 红 |
 | `tools/offline_smoke.py` | `audit` 路径零 socket 尝试（进程内替换 `socket.socket` 为抛异常的桩）；**M2 起固定断言两个码**：缺三件套 → `3`，完整输入 → `0`（真实判定） | 在 audit 分支里联网 → 红 |
-| `tools/verify_ast_gates.py` | 上面五条门的变异验证（**6/6** 必须 red） | 自身即变异验证 |
+| `tools/check_release.py` | 发布门**三态**：`--offline`（CI 跑这档，不碰网络）/ `--pre-tag`（内容齐备 + tag 未创建 + 工作区干净）/ `--online`（远端 · tag 已推 · Release 三件套 · CI run 实录） | 把 README 换成不含版本号的正文 → `--offline` 报红（A08） |
+| `tools/verify_ast_gates.py` | 上面六条门的变异验证（**8/8** 必须 red） | 自身即变异验证 |
 
 ## 环境事实与禁忌（2026-10-21 实测）
 

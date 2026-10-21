@@ -141,3 +141,10 @@ cython_debug/
 *.swp
 .DS_Store
 Thumbs.db
+
+# CLI 默认输出（在仓库根直接跑 `mailvault audit/whatif/diff` 会写进 CWD）。
+# 只忽略**仓库根**的同名文件：`examples/` 下的归档样例是真交付面，不受影响。
+/verdict.json
+/verdict.md
+/diff.json
+/diff.md

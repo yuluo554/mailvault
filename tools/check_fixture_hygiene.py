@@ -2,7 +2,8 @@
 """fixture 卫生守门：只用保留域 / 文档 IP 段（K11）。
 
 题面 §2.4 红线"fixture 引用真实域名报文"对应评分栏直接记 0。
-这条守门扫 `fixtures/` 下的全部文本产物，找"看起来像真实域名/IP"的串。
+这条守门扫 `fixtures/` 与 `examples/` 下的全部文本产物，找"看起来像真实域名/IP"的串
+（`examples/` 是 M6 归档的样例产物：它同样是**对外凭证**，必须同一套纪律）。
 
 白名单（题面 §4）：
 - 域名：`example.invalid` / `example.com` / `example.net` / `example.org` 及其子域
@@ -39,6 +40,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 ALLOWED_DOMAIN_SUFFIXES = ("example.invalid", "example.com", "example.net", "example.org")
 SKIP_EXTENSIONS = {".pem", ".key", ".der", ".png", ".jpg", ".pdf", ".zip", ".gz"}
+
+#: 扫描面：`fixtures/`（输入 + 期望值）与 `examples/`（M6 归档的样例产物）。
+#: 两者都是**对外凭证**——同一套保留域纪律必须同时管住它们，否则样例产物能夹带真实域名。
+SCAN_DIRS = ("fixtures", "examples")
 
 #: 上游原样件的豁免：**只能逐条登记**，每条必须写理由。
 #: 判据：这份文件的字节本身是被许可要求保留的对象，改写即违约或改坏被测语义。
@@ -82,16 +87,49 @@ IGNORE_TOKENS = {
 #: ptype 是 RFC 登记过的闭集，不会随文档增长而需要补词。
 AR_PTYPE = re.compile(r"\b(?:smtp|header|body|policy|dns)\.[a-z0-9-]+(?==)")
 
+#: **RFC 引用**形态（``RFC5322.From`` / ``RFC7208.pdf``）：编号 + 后缀。
+#: 它是条款引用，不是域名——没有一个真实注册域以"RFC"+数字开头。剥掉它不影响
+#: 判据：注释/说明里写"RFC5322.From"照样绿，而写一个真域名照样红。
+RFC_CITATION = re.compile(r"\bRFC\d+\.[A-Za-z0-9_]+")
+
+#: 判定节点的**标识符命名空间**（``check_id`` 与 ``trace[].node`` 的首段）。
+#: 与 :data:`AR_PTYPE` 同一个思路：剥**结构性前缀**（本项目自己的命名空间，闭集），
+#: 不建"常见词白名单"。剥掉首段之后**剩余部分照旧被扫**——所以
+#: ``walk.mail.google.com.0`` 会剥成 ``mail.google.com`` 并**照样报红**。
+#: 首段**不在这个闭集里就不剥**（fail-closed）：新增命名空间必须在此显式登记，
+#: 否则新命名空间会被当成域名候选（同 AR_PTYPE 的"扩闭集"处置）。
+NODE_NAMESPACES = frozenset({
+    "spf", "dkim", "dmarc", "reconcile", "whatif",   # 五个模块
+    "align", "received", "snap", "walk",             # 模块内的子命名空间
+    "n0",                                            # 通用求值节点 id
+})
+
+#: 命名空间之后的**跳数下标**（``walk.example.com.0`` / ``n0.1``）。
+NODE_INDEX = re.compile(r"\.\d+$")
+
+#: 只在**这两个字段**上做命名空间剥离——它们是标识符，不是数据载荷。
+NODE_KEYS = frozenset({"check_id", "node"})
+
+
+def _strip_node_identifier(value: str) -> str:
+    """把 ``<命名空间>.<路径>.<下标>`` 剥成 ``<路径>``，让路径里的域名照旧被扫到。"""
+    stripped = value.strip()
+    head, dot, rest = stripped.partition(".")
+    if dot and head in NODE_NAMESPACES:
+        stripped = rest
+    return NODE_INDEX.sub("", stripped)
+
 
 def _strip_file_references(line: str) -> str:
-    """剥掉行内代码、文件形态 token 与 RFC 8601 的 ``ptype.property=`` 前缀，再交给域名/IP 正则。
+    """剥掉行内代码、文件形态 token、RFC 引用与 RFC 8601 的 ``ptype.property=`` 前缀，再交给域名/IP 正则。
 
-    `README.md` 这类 token 是**文件引用**，`smtp.mailfrom=` 这类是**协议关键字**；
-    两者都不是被测对象。把它们判成"非保留域名"会让文档或对账 fixture 只要提到
-    文件名/属性名就红（假红，且改不好）。
+    `README.md` 这类 token 是**文件引用**，`smtp.mailfrom=` 这类是**协议关键字**，
+    `RFC5322.From` 这类是**条款引用**；三者都不是被测对象。把它们判成"非保留域名"
+    会让文档或产物只要提到文件名/属性名/条款就红（假红，且改不好）。
     """
     stripped = re.sub(r"`[^`]*`", " ", line)
     stripped = AR_PTYPE.sub(" ", stripped)
+    stripped = RFC_CITATION.sub(" ", stripped)
     return re.sub(r"\b[\w./\-]+\.(?:" + "|".join(sorted(FILE_EXTENSIONS)) + r")\b", " ",
                   stripped)
 
@@ -104,8 +142,8 @@ def _domain_ok(domain: str) -> bool:
                for suffix in ALLOWED_DOMAIN_SUFFIXES)
 
 
-def _json_strings(payload: object) -> list[str]:
-    """取出一份 JSON 的**全部字符串值**（不含键）。
+def _json_items(payload: object) -> list[tuple[str, str]]:
+    """取出一份 JSON 的**全部字符串值**及其**直接所在键**（不含键本身）。
 
     **为什么 JSON 只扫值不扫键**：键是 schema 字段名，值才是数据载荷。
     `expected.json` 的 `expect` 按 `plan/04` §2.1 写成**点路径 → 值**（如
@@ -113,30 +151,38 @@ def _json_strings(payload: object) -> list[str]:
     `mail.example` 同形）。把点路径塞进白名单会随字段增长而漏，并且会掩盖真实违规
     ——所以按**位置**区分：键不是被测对象，值才是。
 
+    另外把**每个值的直接键名**一并带回：`verdict.json` 的 `check_id` / `trace[].node`
+    里存的是**标识符**（`dmarc.evaluate` / `dkim.bh` / `walk.example.com.0`），
+    与域名同形但仍要**剥命名空间前缀后扫描路径部分**（见 `_strip_node_identifier`）。
+
     真实域名只可能通过**值**进入 fixture（`snap.json` 的 `qname` / `answer`、
     `.eml` 的地址、`expected.json` 的 `why`），所以这个口径不漏掉任何可执行的引用。
-    变异验证见 `tests/test_dkim.py::test_fixture_hygiene_catches_domain_in_json_value`。
+    变异验证见 `tests/test_dkim.py::test_fixture_hygiene_catches_domain_in_json_value`
+    与 `::test_fixture_hygiene_still_catches_a_domain_inside_a_node_id`。
     """
-    found: list[str] = []
-    stack: list[object] = [payload]
-    while stack:
-        item = stack.pop()
-        if isinstance(item, str):
-            found.append(item)
-        elif isinstance(item, dict):
-            stack.extend(item.values())
-        elif isinstance(item, list):
-            stack.extend(item)
+    found: list[tuple[str, str]] = []
+
+    def walk(node: object, key: str) -> None:
+        if isinstance(node, str):
+            found.append((key, node))
+        elif isinstance(node, dict):
+            for name, value in node.items():
+                walk(value, name)
+        elif isinstance(node, list):
+            for value in node:          # 列表元素继承**外层键名**（trace[] 的 node 等）
+                walk(value, key)
+
+    walk(payload, "")
     return found
 
 
-def _scan_json(path: Path) -> list[str]:
+def _scan_json(path: Path) -> list[tuple[str, str]] | None:
     """扫一份 JSON 的全部字符串值。解析失败 → 交给行扫描（语法坏的文件也要被抓）。"""
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (UnicodeDecodeError, OSError, json.JSONDecodeError):
-        return None  # type: ignore[return-value]
-    return _json_strings(payload)
+        return None
+    return _json_items(payload)
 
 
 def _ip_ok(token: str) -> bool:
@@ -152,14 +198,21 @@ def _ip_ok(token: str) -> bool:
 
 
 def scan(root: Path) -> tuple[list[str], int, list[str]]:
-    """返回 (违规列表, 扫描文件数, 被豁免的文件列表)。"""
+    """返回 (违规列表, 扫描文件数, 被豁免的文件列表)。
+
+    扫描面 = :data:`SCAN_DIRS` 下存在的目录（`fixtures/` 是输入 + 期望值，
+    `examples/` 是已归档的样例产物）。两者都是**对外凭证**，都必须只用保留域。
+    """
     violations: list[str] = []
     scanned = 0
     exempted: list[str] = []
-    fixtures = root / "fixtures"
-    if not fixtures.is_dir():
+    scan_roots = [root / name for name in SCAN_DIRS if (root / name).is_dir()]
+    if not scan_roots:
         return violations, scanned, exempted
-    for path in sorted(fixtures.rglob("*")):
+    paths: list[Path] = []
+    for scan_root in scan_roots:
+        paths.extend(sorted(scan_root.rglob("*")))
+    for path in paths:
         if not path.is_file() or path.suffix.lower() in SKIP_EXTENSIONS:
             continue
         rel = path.relative_to(root).as_posix()
@@ -177,16 +230,19 @@ def scan(root: Path) -> tuple[list[str], int, list[str]]:
         # `expect` 点路径与域名同形，扫键会假红）。解析不了就退回逐行扫描。
         json_values = _scan_json(path) if path.suffix.lower() == ".json" else None
         if json_values is not None:
-            for value in json_values:
-                for match in DOMAIN.finditer(_strip_file_references(value)):
+            for key, value in json_values:
+                # 标识符字段：先剥命名空间前缀，**路径部分照旧被扫**
+                # （`walk.mail.google.com.0` → `mail.google.com` → 报红）。
+                probe_value = _strip_node_identifier(value) if key in NODE_KEYS else value
+                for match in DOMAIN.finditer(_strip_file_references(probe_value)):
                     token = match.group(0)
                     if not _domain_ok(token):
                         violations.append("%s JSON 值里出现非保留域名 %r" % (rel, token))
-                for match in IPV4.finditer(value):
+                for match in IPV4.finditer(probe_value):
                     if not _ip_ok(match.group(0)):
                         violations.append("%s JSON 值里出现非文档 IP 段 %r"
                                           % (rel, match.group(0)))
-                for match in IPV6.finditer(value):
+                for match in IPV6.finditer(probe_value):
                     token = match.group(0)
                     if token.count(":") >= 2 and not _ip_ok(token):
                         violations.append("%s JSON 值里出现非文档 IPv6 段 %r" % (rel, token))
@@ -217,10 +273,11 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.root).resolve() if args.root else ROOT
 
     violations, scanned, exempted = scan(root)
-    print("fixture 卫生守门 · 只用保留域 / 文档 IP 段")
+    print("fixture 卫生守门 · 只用保留域 / 文档 IP 段（面：fixtures/ + examples/）")
     print("=" * 60)
     if scanned == 0 and not exempted:
-        print("SKIP  扫了 0 份 fixture（M0 尚无 fixture；M1 起本项转为 FAIL 判定）")
+        print("SKIP  扫了 0 份 fixture/examples（M0 尚无产物；M1 起 fixtures 转 FAIL 判定，"
+              "M6 起 examples 一并扫）")
         print("=" * 60)
         print("这轮扫到：0 份")
         print("结论: SKIP（不是通过）")
@@ -228,7 +285,7 @@ def main(argv: list[str] | None = None) -> int:
     for item in violations:
         print("FAIL  %s" % item)
     if not violations:
-        print("PASS  %d 份 fixture 全部使用保留域/文档 IP 段" % scanned)
+        print("PASS  %d 份 fixture/examples 全部使用保留域/文档 IP 段" % scanned)
     if exempted:
         print("-" * 60)
         print("EXEMPT  %d 份上游原样件（逐条登记理由，不是静默跳过）:" % len(exempted))

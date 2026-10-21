@@ -23,7 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-COPY_FILES = ["mailvault", "tools", "fixtures", "examples"]
+COPY_FILES = ["mailvault", "tools", "fixtures", "examples", "plan", "README.md", "pyproject.toml"]
 
 #: (标签, 门脚本, 要植入的文件, 植入内容, 期望门输出里出现的关键词)
 CASES = [
@@ -71,7 +71,31 @@ CASES = [
         "\n\ndef _mutant_outside_exemption():\n    import time\n    return time.time()\n",
         "time.time",
     ),
+    (
+        # M6 新增扫描面的阳性对照：`examples/` 与 `fixtures/` 用的是同一套判据，
+        # 所以往 `examples/` 放真实域名必须报红（不是只有 fixtures/ 被扫）。
+        "A07 examples 里放真实域名",
+        "tools/check_fixture_hygiene.py",
+        "examples/mutant-probe.txt",
+        "sender: ops@mail.google.com\n",
+        "mail.google.com",
+    ),
+    (
+        # 发布门必须真的能红：把 README 换成不含版本号的正文，
+        # `check_release.py --offline` 的"版本三处一致"判据必须报 FAIL。
+        # 关键在**判据串**（不是那条永远会打印的行标签）。
+        "A08 发布门：README 缺版本号",
+        "tools/check_release.py",
+        "README.md",
+        "# MUTANT\n\n（本行是为变异验证植入的假 README，不含版本号）\n",
+        "README含v1.0.0=False",
+    ),
 ]
+
+#: 有些门需要显式模式参数（发布门三种模式只能选一个）。
+GATE_ARGV = {
+    "tools/check_release.py": ["--offline"],
+}
 
 
 def _copy_repo(dest: Path) -> None:
@@ -107,7 +131,7 @@ def _plant(root: Path, rel: str, payload: str, *, append: bool) -> None:
 
 def _run(root: Path, script: str) -> tuple[int, str]:
     result = subprocess.run(
-        [sys.executable, str(root / script)],
+        [sys.executable, str(root / script), *GATE_ARGV.get(script, [])],
         cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )
     return result.returncode, result.stdout.decode("utf-8", "replace")

@@ -16,3 +16,5 @@ recursive-include mailvault/data *.dat *.json
 recursive-include fixtures *.json *.yml *.md *.eml *.pem *.txt
 # 上游许可文件名不含 .txt/.md 后缀（`.LICENSE`），recursive-include 抓不到 → 显式登记
 include fixtures/spf/rfc7208-tests.LICENSE
+# 归档样例产物（M6）：禁词门的扫描面 + Release 附件里的"示例产物"
+recursive-include examples *.json *.md

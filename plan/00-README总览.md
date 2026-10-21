@@ -104,9 +104,11 @@ M4 会输出形如"报文头里写 `spf=pass`，我用同一份快照算出 `fai
 ## 目录
 
 ```
-plan/     题目与总览
+plan/     题目与总览（含 RELEASE-M6 发布留档）
 data/     查证记录与数据纪律
-fixtures/ 五组 fixture
+fixtures/ 五组 fixture（输入 + 期望值）
+examples/ 已归档的样例产物（verdict / diff；禁词门与 Release 附件的扫描面）
 mailvault/ 包源码
 docs/     账本格式、backlog
+tools/    守门与生成器（含 check_release.py 发布门）
 ```

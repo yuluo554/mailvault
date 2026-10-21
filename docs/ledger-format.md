@@ -10,7 +10,7 @@
 {
   "schema_version": 1,
   "ledger_id": "<sha256 of canonical inputs>",
-  "tool_version": "0.1.0",
+  "tool_version": "1.0.0",
   "snapshot": {
     "fetched_at": "<ISO8601 from snapshot, never system clock>",
     "resolver": "synthetic | <resolver string>",
@@ -421,7 +421,7 @@ include 树；它的"树"是**走查路径**，写在 `trace` 的 `walk.<i>` 节
 ```json
 {
   "schema_version": 1,
-  "tool_version": "0.1.0.dev0",
+  "tool_version": "1.0.0",
   "baseline_ledger_id": "<sha256>",
   "candidate_ledger_id": "<sha256>",
   "diff": {"ops": [], "op_count": 0, "changed_checks": [], "summary": {}}

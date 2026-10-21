@@ -12,7 +12,7 @@
 
 ## 状态
 
-版本 `v0.1.0.dev0`（开发中）。**M5 完成**：`mailvault audit` 在同一份快照上跑
+版本 `v1.0.0`。**M6 发布**：`mailvault audit` 在同一份快照上跑
 **SPF（RFC 7208 §4–§7）、DKIM 验签（RFC 6376 + RFC 8301）、DMARC（RFC 9989 §4.10）
 与三方对账（RFC 8601）**，产出两轨账本；`whatif` / `diff` 也已接上真实现。
 
@@ -64,17 +64,18 @@
 py -3.12 -m mailvault --version
 py -3.12 -m mailvault --help
 
-# 跑工程门（布局门 + 三条 AST 守门 + fixture 卫生 + 断网冒烟）
+# 跑工程门（布局门 + 三条 AST 守门 + fixture 卫生 + 断网冒烟 + 发布门）
 py -3.12 tools/check_sprint_layout.py
 py -3.12 tools/check_no_network.py
 py -3.12 tools/check_no_direct_json.py
 py -3.12 tools/check_no_clock.py
 py -3.12 tools/check_fixture_hygiene.py
 py -3.12 tools/offline_smoke.py
+py -3.12 tools/check_release.py --offline    # 发布门（不碰网络的那一档）
 
 # 跑守门的变异验证（每条守门都必须能跑红，否则它是假门）
 py -3.12 tools/verify_layout_gate.py        # 11/11
-py -3.12 tools/verify_ast_gates.py          # 6/6
+py -3.12 tools/verify_ast_gates.py          # 8/8
 py -3.12 tools/verify_module_mutations.py   # 11/11（判定逻辑）
 
 # 跑测试（开发期需 pytest + pyyaml + cryptography；运行时零第三方依赖）
@@ -132,6 +133,7 @@ mailvault diff --baseline before.json --candidate after.json
 | [`data/README.md`](data/README.md) | 查证记录、数据许可、合成数据纪律 |
 | [`data/rfc7208-failures.md`](data/rfc7208-failures.md) | RFC 7208 实跑结果 + 失败/口径差异逐条登记（M2） |
 | [`docs/ledger-format.md`](docs/ledger-format.md) | 账本字段与 `evidence_ref` 约定 |
+| [`examples/`](examples/README.md) | 已归档的样例产物：`audit` / `whatif` / `diff` 各一例（真 CLI 跑真 fixture 生成，带 `--strict-evidence`） |
 | [`AGENTS.md`](AGENTS.md) | 方法论锚点与布局门（新对话先读） |
 
 ## 许可
