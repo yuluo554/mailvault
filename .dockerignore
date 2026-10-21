@@ -1,0 +1,13 @@
+# 离线镜像的构建上下文：只排掉**明显不是交付面**的东西。
+# 不排 fixtures/ examples/ tests/ tools/ —— 它们是 `offline_smoke.py` 与
+# `check_release.py` 的判据面，镜像里必须原样在。
+.git
+.github
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.venv
+venv
+*.egg-info
+dist
+build

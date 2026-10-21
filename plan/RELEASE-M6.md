@@ -105,14 +105,47 @@ M6 为第②步把卫生门的扫描面从 `fixtures/` 扩到 `fixtures/ + examp
 
 > 本节在 `v1.0.0` 打出**之后**填写。tag 树内的留档**不含**这些字面值（自指）。
 
+### 2.1 首推 CI 实录与一处**只在远端才显形**的缺陷
+
+首推 `main`（run **39526291036**）的结果是「**四个测试矩阵全绿 + 一个 job 红**」：
+
+| job | 结果 |
+|---|---|
+| `py3.11 · ubuntu-latest` | ✅ 全步骤 success（含发布门 `--offline`） |
+| `py3.11 · windows-latest` | ✅ |
+| `py3.13 · ubuntu-latest` | ✅ |
+| `py3.13 · windows-latest` | ✅ |
+| `offline no-network job` | ❌ 挂在 `Initialize containers`（**没有跑到任何一条判据**） |
+
+**根因**（日志原文）：
+
+```
+docker: conflicting options: cannot attach both user-defined and non-user-defined
+network-modes
+Exit code 125 returned from process: file name '/usr/bin/docker'
+```
+
+Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠加
+`container.options: --network none` 就成了互斥选项。**这个缺陷在本机永远看不出来**
+（本机没有 docker，也不走 Actions 的容器模型），是 V1「CI 实跑」这一条的第一个真实产出。
+
+**修法**（`ci.yml` 的 `offline` job 重写）：不把 job 放进容器，改用普通 runner +
+`docker run --network none` 起**嵌套**容器（`--network none` 只在 `docker run` 这一层合法）；
+镜像由新增的 `.github/offline.Dockerfile` 构建。运行期完全无网络，正是要证明的那件事。
+另加一条"零第三方 import（无任何安装步骤）"的断言，让"运行时零依赖"在无网络容器里再证一次。
+
+### 2.2 回填
+
 | 项 | 值 |
 |---|---|
-| CI run id（`main` 首推） | `待回填` |
-| CI run id（tag `v1.0.0` 推送） | `待回填` |
-| push 数 = run 数 | `0 = 0` |
-| 远端 | `待回填` |
+| CI run id（`main` 首推，**红**） | `39526291036` |
+| CI run id（tag `v1.0.0` 首推，**红**） | `39526365982` |
+| CI run id（修复后 `main`） | `待回填` |
+| CI run id（修复后 tag `v1.0.0` 重指） | `待回填` |
+| push 数 = run 数 | `待回填` |
+| 远端 | `git@github.com:yuluo554/mailvault.git`（公开） |
 | GitHub Release | `待回填` |
-| tag OID / 源码包 sha256 | `待回填` |
+| tag OID / 源码包 sha256 | `待回填`（tag 重指后重算） |
 
 ---
 

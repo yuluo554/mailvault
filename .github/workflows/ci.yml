@@ -85,18 +85,26 @@ jobs:
   offline:
     name: offline no-network job
     runs-on: ubuntu-latest
-    container:
-      image: python:3.12-slim
-      options: --network none
+    # **不要把 job 放进容器**：Actions 总是给 job 容器挂一个 user-defined network，
+    # 再叠加 `container.options: --network none` 会得到
+    #   docker: conflicting options: cannot attach both user-defined and
+    #   non-user-defined network-modes（实测 run 39526291036，Initialize containers exit 125）。
+    # 正确做法是在普通 runner 上用 `docker run --network none` 起**嵌套**容器——
+    # `--network none` 只在 `docker run` 这一层合法。构建期可联网（拉基础镜像），
+    # 运行期完全无网络，这正是要证明的那件事。
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install without deps
-        run: python -m pip install -e . --no-deps --no-build-isolation
+      - name: Build offline image
+        run: docker build -f .github/offline.Dockerfile -t mailvault-offline .
 
       - name: Offline smoke inside network-less container
-        run: python tools/offline_smoke.py
+        run: docker run --rm --network none mailvault-offline python tools/offline_smoke.py
 
-      # `--network none` 容器里能跑通 = 发布门 `--offline` 档真的不需要网络。
+      # `--network none` 里能跑通 = 发布门 `--offline` 档真的不需要网络。
       - name: Release gate offline mode needs no network
-        run: python tools/check_release.py --offline
+        run: docker run --rm --network none mailvault-offline python tools/check_release.py --offline
+
+      # 再证一次：判定路径真的不需要装任何第三方包。
+      - name: Runtime has zero third-party imports (no install step at all)
+        run: docker run --rm --network none mailvault-offline python -c "import mailvault, sys; print('version', mailvault.__version__); print('third-party:', [m for m in sys.modules if m in ('yaml','cryptography','requests')])"
