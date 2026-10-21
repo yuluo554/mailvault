@@ -1,0 +1,8 @@
+{
+  "client_ip": "192.0.2.10",
+  "helo": "mail.example.com",
+  "mail_from": "alice@list.example.org",
+  "trusted_authserv_ids": [
+    "mx.example.com"
+  ]
+}

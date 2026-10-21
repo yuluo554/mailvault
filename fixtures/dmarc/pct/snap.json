@@ -1,0 +1,57 @@
+{
+  "fetched_at": "2026-10-19T18:35:00Z",
+  "psl_date": "2026-10-20",
+  "psl_version": "2026-10-20_08-40-56_UTC",
+  "queries": [
+    {
+      "answer": [
+        "v=DMARC1; p=reject; pct=25; rf=afrf; ri=86400; rua=mailto:dmarc@example.com"
+      ],
+      "qname": "_dmarc.example.com",
+      "qtype": "TXT",
+      "rcode": "NOERROR",
+      "ttl": 300
+    },
+    {
+      "answer": [],
+      "qname": "_dmarc.com",
+      "qtype": "TXT",
+      "rcode": "NXDOMAIN",
+      "ttl": 300
+    },
+    {
+      "answer": [
+        "192.0.2.10"
+      ],
+      "qname": "example.com",
+      "qtype": "A",
+      "rcode": "NOERROR",
+      "ttl": 300
+    },
+    {
+      "answer": [
+        "v=spf1 ip4:192.0.2.0/24 -all"
+      ],
+      "qname": "other.example.net",
+      "qtype": "TXT",
+      "rcode": "NOERROR",
+      "ttl": 300
+    },
+    {
+      "answer": [],
+      "qname": "_dmarc.other.example.net",
+      "qtype": "TXT",
+      "rcode": "NXDOMAIN",
+      "ttl": 300
+    },
+    {
+      "answer": [],
+      "qname": "_dmarc.example.net",
+      "qtype": "TXT",
+      "rcode": "NXDOMAIN",
+      "ttl": 300
+    }
+  ],
+  "resolver": "synthetic",
+  "schema_version": 1
+}

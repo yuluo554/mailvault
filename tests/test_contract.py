@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from mailvault import __version__
@@ -118,12 +120,86 @@ def test_out_dir_and_explicit_paths_coexist():
 # ── 未实现子命令 → fail-closed ──────────────────────────────────────────
 
 
-def test_audit_not_ready_returns_undecidable(tmp_path):
-    """骨架期"没做"必须返回 2，不能返回 0（否则 CI 会把空壳当成功）。"""
+def test_audit_is_implemented_and_requires_inputs(tmp_path):
+    """M2 起 `audit` 已实现：输入缺失 → 3（输入错误），不再是"没做"（2）。
+
+    这条与 `test_audit_judges_end_to_end` 成对：一条证明"缺输入不会被当成成功"，
+    另一条证明"有输入时真的算出判定"。只有前者的话，一个永远返回 3 的壳也能过。
+    """
     assert main([
         "audit", "--snapshot", "s.json", "--eml", "m.eml", "--query", "q.json",
         "--out-dir", str(tmp_path),
-    ]) == int(ExitCode.UNDECIDABLE)
+    ]) == int(ExitCode.INPUT_ERROR)
+
+
+def test_audit_judges_end_to_end(tmp_path):
+    """完整三件套 → 真实判定 + 两轨产物落盘（M2 DoD："断网下 audit 成功"）。"""
+    from mailvault import canonical
+
+    canonical.dump_file(tmp_path / "snap.json", {
+        "schema_version": 1,
+        "fetched_at": "2026-10-19T18:35:00Z",
+        "resolver": "synthetic",
+        "psl_version": "2026-10-20_08-40-56_UTC",
+        "psl_date": "2026-10-20",
+        "queries": [{"qname": "example.com", "qtype": "TXT", "rcode": "NOERROR",
+                     "answer": ["v=spf1 ip4:192.0.2.0/24 -all"], "ttl": 300}],
+    })
+    canonical.dump_file(tmp_path / "query.json", {
+        "mail_from": "sender@example.com",
+        "client_ip": "192.0.2.10",
+        "helo": "mail.example.com",
+    })
+    (tmp_path / "message.eml").write_bytes(b"Subject: t\r\n\r\nbody\r\n")
+
+    code = main([
+        "audit",
+        "--snapshot", str(tmp_path / "snap.json"),
+        "--eml", str(tmp_path / "message.eml"),
+        "--query", str(tmp_path / "query.json"),
+        "--out-dir", str(tmp_path),
+    ])
+    assert code == int(ExitCode.OK)      # SPF pass
+    verdict = json.loads((tmp_path / "verdict.json").read_text(encoding="utf-8"))
+    assert verdict["checks"][0]["check_id"] == "spf.check_host"
+    assert verdict["checks"][0]["result"] == "pass"
+    assert verdict["checks"][0]["evidence_ref"]
+    assert (tmp_path / "verdict.md").is_file()
+
+
+def test_audit_double_run_is_byte_identical(tmp_path):
+    """两次运行 `verdict.json` 字节级一致（M2 DoD）。"""
+    import hashlib
+
+    from mailvault import canonical
+
+    canonical.dump_file(tmp_path / "snap.json", {
+        "schema_version": 1,
+        "fetched_at": "2026-10-19T18:35:00Z",
+        "resolver": "synthetic",
+        "psl_version": "2026-10-20_08-40-56_UTC",
+        "psl_date": "2026-10-20",
+        "queries": [{"qname": "example.com", "qtype": "TXT", "rcode": "NOERROR",
+                     "answer": ["v=spf1 -all"], "ttl": 300}],
+    })
+    canonical.dump_file(tmp_path / "query.json", {
+        "mail_from": "sender@example.com",
+        "client_ip": "192.0.2.10",
+    })
+    (tmp_path / "message.eml").write_bytes(b"Subject: t\r\n\r\nbody\r\n")
+
+    digests = []
+    for name in ("a.json", "b.json"):
+        main([
+            "audit",
+            "--snapshot", str(tmp_path / "snap.json"),
+            "--eml", str(tmp_path / "message.eml"),
+            "--query", str(tmp_path / "query.json"),
+            "--json", str(tmp_path / name),
+            "--md", str(tmp_path / (name + ".md")),
+        ])
+        digests.append(hashlib.sha256((tmp_path / name).read_bytes()).hexdigest())
+    assert digests[0] == digests[1]
 
 
 def test_whatif_requires_change():
@@ -139,16 +215,47 @@ def test_whatif_bad_change_shape():
     ]) == int(ExitCode.INPUT_ERROR)
 
 
-def test_whatif_valid_change_reaches_not_ready():
+def test_whatif_valid_change_requires_existing_inputs():
+    """M5 起 `whatif` 已实现：参数合法但输入缺失 → 3（输入错误），不再是"没做"（2）。
+
+    这条与 `test_whatif_diff_is_recomputable` 成对：一条证明"缺输入不会被当成成功"，
+    另一条证明"有输入时真的算出差分"。只有前者的话，一个永远返回 3 的壳也能过。
+    """
     assert main([
         "whatif", "--snapshot", "s", "--eml", "m", "--query", "q", "--change", "p=reject",
-    ]) == int(ExitCode.UNDECIDABLE)
+    ]) == int(ExitCode.INPUT_ERROR)
 
 
-def test_snapshot_fetch_not_ready():
+def test_whatif_unknown_key_is_input_error_not_silent():
+    """未知 `--change` 键 → 3，不做静默忽略（`plan/03` §2 第 3 条）。
+
+    静默忽略会让用户以为"我改了"，实际跑的还是基线——那是最坏的一种"看起来成功"。
+    """
     assert main([
-        "snapshot", "fetch", "--eml", "m.eml", "--query", "q.json", "-o", "s.json",
-    ]) == int(ExitCode.UNDECIDABLE)
+        "whatif", "--snapshot", "s", "--eml", "m", "--query", "q", "--change", "q=reject",
+    ]) == int(ExitCode.INPUT_ERROR)
+
+
+def test_whatif_bad_value_is_input_error():
+    assert main([
+        "whatif", "--snapshot", "s", "--eml", "m", "--query", "q", "--change", "p=drop",
+    ]) == int(ExitCode.INPUT_ERROR)
+
+
+def test_diff_is_implemented_and_requires_inputs(tmp_path):
+    """M5 起 `diff` 已实现：两份账本缺一 → 3（输入错误）。"""
+    assert main([
+        "diff", "--baseline", str(tmp_path / "nope.json"),
+        "--candidate", str(tmp_path / "nope2.json"), "--out-dir", str(tmp_path),
+    ]) == int(ExitCode.INPUT_ERROR)
+
+
+def test_snapshot_fetch_requires_existing_inputs(tmp_path):
+    """M1 起 `snapshot fetch` 已实现：输入缺失 → 输入错误（3），而不是"没做"（2）。"""
+    assert main([
+        "snapshot", "fetch", "--eml", "m.eml", "--query", "q.json",
+        "-o", str(tmp_path / "s.json"),
+    ]) == int(ExitCode.INPUT_ERROR)
 
 
 # ── 错误类型 → 退出码 ───────────────────────────────────────────────────

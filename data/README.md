@@ -102,15 +102,27 @@ URL 见 `plan/01-题目文档.md` §2.2。
 | 口径 | 定义位置（首期） | 约定 |
 |---|---|---|
 | SPF term 上限 | 常量模块 | 10（RFC 7208 §4.6.4），第 11 个 → permerror |
-| MX / PTR 单机制上限 | 常量模块 | 各 10（RFC 7208 §4.6.4） |
+| MX 单机制上限 | 常量模块 | 10（RFC 7208 §4.6.4）→ 超限 permerror（MUST） |
+| PTR 单机制上限 | 常量模块 | 10（RFC 7208 §4.6.4）→ 超出前 10 条**被忽略**（截断），**不是** permerror |
 | void lookup 上限 | 常量模块 | SHOULD 2（RFC 7208 §4.6.4）→ 超限标 `undecidable` 语义，不硬判 fail |
+| SPF 嵌套深度 / 树节点数 | 常量模块 | 20 / 256（本项目第二道保险，防递归栈与成环图跑满） |
 | 退出码 | 常量模块 | `0` pass/none、`1` fail、`2` undecidable、`3` 输入/快照错误、`4` 内部错误 |
 | 快照 `schema_version` | 常量模块 | 单一整数字面量；schema 变更必须升版本并写迁移说明 |
 | 账本字段名与 `evidence_ref` 格式 | `docs/ledger-format.md` + 常量模块 | 字段名不得在模块间各写一套 |
 | RSA 最小位数 | 常量模块 | 1024（RFC 8301 §3.2，低于即无效） |
-| PSL 版本 | 冻结件元数据 | 输出必须带版本与日期 |
+| DKIM 接受的算法 | 常量模块 | `rsa-sha256`；`rsa-sha1` 判永久失败（RFC 8301 §3.1）；`ed25519-sha256` 判不可判定 |
+| DKIM `key_status` 枚举 | 常量模块 | `ok` / `revoked` / `missing` / `weak` / `invalid` |
+| 对账三分类 | 常量模块 | `consistent` / `contradiction` / `undecidable` |
+| 每条矛盾的最少解释数 | 常量模块 | 2（题面 §3 的 M4 硬性要求；少于 2 → `InternalError`，不靠"我记得要写两条"） |
+| `--strict-evidence` 禁词表 | 常量模块 | 唯一出处 `STRICT_FORBIDDEN`；对账装配期与渲染期**同引一份**（K24，两处各写一份必然漂移） |
+| `--change` 的合法键与取值 | 常量模块 | `p`/`sp`/`np`/`t`/`all`/`include` + 各自的值域（K25） |
+| 差分产物 schema 版本 | 常量模块 | `DIFF_SCHEMA_VERSION`，与快照/账本两套版本**各自独立**（它不是快照也不是账本） |
+| PSL 版本 | 冻结件元数据 | 输出必须带版本与日期；PSL 的 Organizational Domain **只作对照**（K16：判定值由 tree walk 得出） |
 
 **禁止**把星数、下载量、issue 数、检索总数为任何形式的常量或默认输出写入代码。
+
+> **M2 更正**：PTR 与 void 两行的早期写法不准，已按 RFC 7208 §4.6.4 原文更正。
+> 三条更正的依据与佐证见 `plan/04` §3.1；逐条落地的实跑结果见 `data/rfc7208-failures.md`。
 
 ---
 

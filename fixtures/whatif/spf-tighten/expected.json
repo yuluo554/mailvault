@@ -1,0 +1,27 @@
+{
+  "case_id": "whatif-spf-tighten-01",
+  "expect": {
+    "applied[0].from": "v=spf1 ip4:192.0.2.0/24 ?all",
+    "applied[0].key": "all",
+    "applied[0].to": "v=spf1 ip4:192.0.2.0/24 -all",
+    "baseline.dmarc.result": "none",
+    "baseline.exit_code": 0,
+    "baseline.spf.result": "neutral",
+    "candidate.exit_code": 1,
+    "candidate.spf.result": "fail",
+    "diff.exit_code.from": 0,
+    "diff.exit_code.to": 1,
+    "diff.op_count_gt": 0,
+    "rua.status": "undecidable"
+  },
+  "input": {
+    "changes": [
+      "all=-all"
+    ],
+    "eml": "message.eml",
+    "query": "query.json",
+    "rua": null,
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 7208 §5.1：`?all` 命中给 neutral、`-all` 命中给 fail。基线没有 DMARC 记录（两个 `_dmarc` 都明确 NXDOMAIN，不是数据缺口），所以基线三项 = neutral / none / none → 退出码 0；把 `all=` 收紧为 `-all` 后 SPF 判 fail → 退出码 1。这条样本证明 what-if 的差分**真的改变了判定与退出码**。未提供 --rua → RUA 关联判 undecidable 并给出所需输入清单（不猜）"
+}

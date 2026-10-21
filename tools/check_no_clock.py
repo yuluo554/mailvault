@@ -7,6 +7,15 @@
 禁：`datetime.now` / `datetime.today` / `datetime.utcnow` / `datetime.fromtimestamp` /
 `time.time` / `time.monotonic` / `time.perf_counter` / `time.localtime` / `time.gmtime`。
 
+**唯一豁免（M1 登记）**：
+
+    mailvault/net.py::utc_now_z
+
+理由：`snapshot fetch` 必须给快照盖 `fetched_at`，"这份快照什么时候抓的"本质上只能读时钟。
+K7 约束的是**判定**不读时钟（时间只来自快照），不是"抓取不读时钟"。
+豁免**精确到函数名**而不是整个文件：net.py 里除 `utc_now_z` 之外的任何时钟调用仍然报红。
+判据实现见 :func:`_exempt_spans`——它按 AST 定位函数的**行区间**，不是按文件放行。
+
 变异验证：在 `mailvault/render.py` 里加一句 `import time; time.time()` → 本脚本必须报红。
 
 退出码：0 通过 / 1 有违规。
@@ -36,6 +45,27 @@ FORBIDDEN = {
 
 ROOT = Path(__file__).resolve().parent.parent
 
+#: 精确豁免：(相对路径, 函数名)。只放行该函数**行区间内**的时钟调用。
+CLOCK_EXEMPT_FUNCTIONS = {
+    ("mailvault/net.py", "utc_now_z"):
+        "snapshot fetch 要给快照盖 fetched_at——抓取时长不是判定时长（K7 只管判定）",
+}
+
+
+def _exempt_spans(tree: ast.AST) -> list[tuple[int, int]]:
+    """返回被豁免函数的 ``(起行, 止行)`` 列表（闭区间，按 AST 的 lineno/end_lineno）。"""
+    spans: list[tuple[int, int]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for owner, name in CLOCK_EXEMPT_FUNCTIONS:
+            if node.name != name:
+                continue
+            start = node.lineno
+            end = getattr(node, "end_lineno", None) or start
+            spans.append((start, end))
+    return spans
+
 
 def scan(root: Path) -> tuple[list[str], int]:
     violations: list[str] = []
@@ -51,14 +81,22 @@ def scan(root: Path) -> tuple[list[str], int]:
             continue
 
         aliases = _aliases(tree)
+        exempt = _exempt_spans(tree) if rel in {o for o, _n in CLOCK_EXEMPT_FUNCTIONS} else []
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
             dotted = _dotted(node.func, aliases)
-            if dotted in FORBIDDEN:
-                violations.append("%s:%d 调用 %s（判定不许读系统时钟）"
-                                  % (rel, node.lineno, dotted))
+            if dotted not in FORBIDDEN:
+                continue
+            if _in_spans(node.lineno, exempt):
+                continue
+            violations.append("%s:%d 调用 %s（判定不许读系统时钟）"
+                              % (rel, node.lineno, dotted))
     return violations, scanned
+
+
+def _in_spans(lineno: int, spans: list[tuple[int, int]]) -> bool:
+    return any(start <= lineno <= end for start, end in spans)
 
 
 def _aliases(tree: ast.AST) -> dict[str, str]:

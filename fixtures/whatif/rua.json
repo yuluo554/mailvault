@@ -1,0 +1,93 @@
+{
+  "policy_published": {
+    "adkim": "r",
+    "aspf": "r",
+    "domain": "example.com",
+    "p": "none",
+    "sp": "none"
+  },
+  "records": [
+    {
+      "auth_results": {
+        "dkim": [
+          {
+            "domain": "example.com",
+            "result": "pass"
+          }
+        ],
+        "spf": [
+          {
+            "domain": "example.com",
+            "result": "fail"
+          }
+        ]
+      },
+      "count": 42,
+      "identifiers": {
+        "header_from": "example.com"
+      },
+      "policy_evaluated": {
+        "disposition": "none",
+        "dkim": "pass",
+        "spf": "fail"
+      },
+      "source_ip": "192.0.2.10"
+    },
+    {
+      "auth_results": {
+        "dkim": [],
+        "spf": [
+          {
+            "domain": "example.com",
+            "result": "fail"
+          }
+        ]
+      },
+      "count": 7,
+      "identifiers": {
+        "header_from": "example.com"
+      },
+      "policy_evaluated": {
+        "disposition": "none",
+        "dkim": "fail",
+        "spf": "fail"
+      },
+      "source_ip": "198.51.100.9"
+    },
+    {
+      "auth_results": {
+        "dkim": [
+          {
+            "domain": "example.com",
+            "result": "pass"
+          }
+        ],
+        "spf": [
+          {
+            "domain": "example.com",
+            "result": "pass"
+          }
+        ]
+      },
+      "count": 128,
+      "identifiers": {
+        "header_from": "example.com"
+      },
+      "policy_evaluated": {
+        "disposition": "none",
+        "dkim": "pass",
+        "spf": "pass"
+      },
+      "source_ip": "203.0.113.7"
+    }
+  ],
+  "report_metadata": {
+    "date_range": {
+      "begin": 1767225600,
+      "end": 1767312000
+    },
+    "email": "dmarc-reports@example.net",
+    "org_name": "Example Receiver Co",
+    "report_id": "rua-2026-01-01-example-com"
+  }
+}

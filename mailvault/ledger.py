@@ -35,11 +35,16 @@ def check_entry(
     trace: list[dict[str, Any]] | None = None,
     budget: dict[str, Any] | None = None,
     warnings: list[str] | None = None,
+    tree: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """构造一条 ``checks[]`` 条目，并做构造期校验。
 
     ``evidence_ref`` 为空时：结果降级为 ``undecidable``，reason 追加说明，
     warnings 追加一条——**不抛异常**（一条判定缺条款不该炸掉整份账本）。
+
+    ``tree`` 是可选的判定树（`docs/ledger-format.md` §4），只有 SPF 这类
+    "递归展开"的判定才有；为 ``None`` 时键仍然存在（值 ``null``），
+    这样所有条目的字段集一致，渲染层不需要判"这个键有没有"。
     """
     if not check_id or "." not in check_id:
         raise InternalError("check_id 必须是 '<module>.<name>' 形态: %r" % (check_id,))
@@ -66,6 +71,7 @@ def check_entry(
         "evidence_ref": refs,
         "trace": list(trace or []),
         "budget": budget,
+        "tree": tree,
         "warnings": notes,
     }
 

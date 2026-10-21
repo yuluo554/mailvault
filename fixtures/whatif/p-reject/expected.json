@@ -1,0 +1,31 @@
+{
+  "case_id": "whatif-p-reject-01",
+  "expect": {
+    "applied[0].key": "p",
+    "applied[0].record": "_dmarc.example.com",
+    "baseline.dmarc.result": "fail",
+    "baseline.dmarc.subject.disposition": "none",
+    "baseline.dmarc.subject.disposition_status": "determined",
+    "baseline.exit_code": 1,
+    "baseline.spf.result": "softfail",
+    "candidate.dmarc.result": "fail",
+    "candidate.dmarc.subject.disposition": "reject",
+    "candidate.dmarc.subject.policy_value": "reject",
+    "candidate.exit_code": 1,
+    "diff.op_count_gt": 0,
+    "rua.affected[0].source_ip": "198.51.100.9",
+    "rua.affected_total": 1,
+    "rua.period_note_contains": "只覆盖报告期内",
+    "rua.status": "complete"
+  },
+  "input": {
+    "changes": [
+      "p=reject"
+    ],
+    "eml": "message.eml",
+    "query": "query.json",
+    "rua": "rua.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 9989 §4.10.1 + §4.7：`p=none` 改 `p=reject` 后，同一份输入里『没有对齐标识』这件事不变（DMARC 仍判 fail），但**处置**从 none 变 reject。这正是题面 §3 的 M5 要回答的问题：上 p=reject 会打断谁。`fixtures/whatif/rua.json` 里只有一条记录的 SPF 与 DKIM **都**没通过，所以 affected_total=1。输出必须标注『只覆盖报告期内且依赖报告方口径』"
+}

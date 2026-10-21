@@ -1,0 +1,25 @@
+Authentication-Results: mx.example.com;
+	spf=fail smtp.mailfrom=alice@list.example.org;
+	dkim=pass header.d=example.com header.s=selrec
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=selrec; i=@example.com; t=1767225600;
+	h=from:to:subject:date; bh=pfdullCb/ddv6AQblEOpmrPM3ZZLPXRpv3zQI0VT7HA=; b=VgJkXud+/9yi4HxlZM0XVg7IvWj4DCz1oN7g2O9b54kYbJPwKP85Nh//aM4jC/8A
+	8kH604OATKwzTdgAnDv6eevdIy3kFvuFHCVkztmAThJtlhY/IUb04FwsyVTJr4OS
+	fNTDYx0j8Tq/hdLwo+2OUJHAe+gS/K3CpwqCW5v+FDDHftj/94Djyr/v0vD5MapY
+	ppAYc7jPy5NQNCJAEV1ESrIagYZgsYTtf6XFhYkGnPOyT6Od4BHf2E+jDvUyz90l
+	HLzXpDzpqYreWwJbLpuhP6DMJlAoQfliCnZ2/WKCfblS/L9+7w+KZzo0gcAeeAed
+	lqKtRUwm7Pl0xtUb52iqtA==
+Received: from relay.example.org by mx.example.com with ESMTP id R1B; Thu, 1 Jan 2026 00:00:03 +0000
+Received: from list.example.org by relay.example.org with ESMTP id R1A; Thu, 1 Jan 2026 00:00:02 +0000
+Received: from mail.example.com by list.example.org with ESMTP id R1C; Thu, 1 Jan 2026 00:00:01 +0000
+From: Alice <alice@example.com>
+To: Bob <bob@example.net>
+Subject: quarterly report
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Message-ID: <reconcile-fixture@example.com>
+
+Hello Bob,
+
+Please see the attached quarterly report.
+
+Regards,
+Alice

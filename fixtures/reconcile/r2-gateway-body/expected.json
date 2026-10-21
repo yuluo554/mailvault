@@ -1,0 +1,22 @@
+{
+  "case_id": "reconcile-gateway-body-01",
+  "expect": {
+    "recon.cross_check.result": "undecidable",
+    "reconcile.claimed[0].method": "dkim",
+    "reconcile.claimed[0].result": "pass",
+    "reconcile.class[0]": "contradiction",
+    "reconcile.dkim.failure_at_kind": "body_hash",
+    "reconcile.entries": 1,
+    "reconcile.explanation[0][0].hypothesis_contains": "网关",
+    "reconcile.explanation[0][0].verify_nonempty": true,
+    "reconcile.explanation[0][1].verify_nonempty": true,
+    "reconcile.min_explanations_ge": 2,
+    "reconcile.recomputed[0].result": "fail"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "题面 §3 的 M4 验收 ②：网关重写正文导致 bh 不匹配。签名是对**原始正文**做的（`ORIGINAL_BODY`），报文里的正文却是网关改写后的版本（`GATEWAY_BODY`：尾部追加了一行网关声明）→ RFC 6376 §6.1.3 的 bh= 不匹配。报文头声称 dkim=pass——那是网关**验签时**看到的（那时正文还没被改），所以与本工具的重算结果**不一致** → contradiction。矛盾必须给 ≥2 条解释且每条带 verify（题面 M4 硬性要求）。汇总条目判 undecidable：矛盾不等于 fail——本工具不知道哪一侧描述的是现实"
+}

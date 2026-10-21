@@ -1,0 +1,16 @@
+{
+  "case_id": "dkim-valid-01",
+  "expect": {
+    "dkim.bh_matches": true,
+    "dkim.failure_at": null,
+    "dkim.key_bits": 2048,
+    "dkim.key_status": "ok",
+    "dkim.result": "pass"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 6376 §6.1.3：正文哈希与 b= 均通过，relaxed/relaxed 规范化；密钥 2048 位 ≥ RFC 8301 §3.2 的 1024 位门槛"
+}

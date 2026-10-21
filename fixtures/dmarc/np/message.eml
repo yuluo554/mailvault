@@ -1,0 +1,9 @@
+From: <alice@nosuch.example.com>
+To: <bob@example.net>
+Subject: dmarc tree walk fixture
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Message-ID: <dmarc-fixture@example.com>
+
+Hello Bob,
+
+DMARC tree walk fixture body.

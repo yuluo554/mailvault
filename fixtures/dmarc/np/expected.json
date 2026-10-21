@@ -1,0 +1,22 @@
+{
+  "case_id": "dmarc-np-nonexistent",
+  "expect": {
+    "dmarc.author_domain": "nosuch.example.com",
+    "dmarc.disposition": "quarantine",
+    "dmarc.disposition_status": "determined",
+    "dmarc.dkim_align.relaxed": false,
+    "dmarc.organizational_domain": "example.com",
+    "dmarc.policy_source": "organizational",
+    "dmarc.policy_tag": "np",
+    "dmarc.policy_value": "quarantine",
+    "dmarc.result": "fail",
+    "dmarc.spf_align.relaxed": false,
+    "dmarc.walk_queries": 3
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 9989 §4.10.1：Author 域**不存在**（快照对该名字的 A 查询答复 NXDOMAIN，§3.2.13 的口径）时用 `np=`，存在时用 `sp=`。本样本刻意让 sp=reject / np=quarantine **不同**——若两者相同，'用错了哪个标签'看不出来。SPF 虽 pass 但 MAIL FROM 是 bounce.example.net、与 Author 不对齐 → fail。题面 M3 验收 3 的 `np` 独立样本"
+}

@@ -37,8 +37,18 @@ jobs:
       - name: Layout gate mutation verification (11 mutations must go red)
         run: python tools/verify_layout_gate.py
 
-      - name: AST gate mutation verification (5 gates must go red)
+      - name: AST gate mutation verification (6 mutations must go red)
         run: python tools/verify_ast_gates.py
+
+      - name: Module mutation verification (11 semantic faults must go red)
+        run: python tools/verify_module_mutations.py
+
+      - name: Fixture generators are idempotent (--check)
+        run: |
+          python tools/gen_dkim_fixtures.py --check
+          python tools/gen_dmarc_fixtures.py --check
+          python tools/gen_reconcile_fixtures.py --check
+          python tools/gen_whatif_fixtures.py --check
 
       - name: AST gate - no network outside net.py
         run: python tools/check_no_network.py

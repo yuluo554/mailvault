@@ -1,0 +1,17 @@
+{
+  "case_id": "dkim-key-missing-datagap-01",
+  "expect": {
+    "dkim.data_gap": [
+      "sel20261021._domainkey.example.com",
+      "TXT"
+    ],
+    "dkim.key_status": "missing",
+    "dkim.result": "undecidable"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "K13 / plan/04 §2.3：快照里没有这条查询 = 数据缺口 → undecidable + data_gap，**不是** fail，也不是「密钥不存在」"
+}

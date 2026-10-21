@@ -1,0 +1,16 @@
+From: <alice@a.b.c.d.e.f.g.h.i.j.k.example.com>
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed; d=signing.example.com; s=sel; i=@signing.example.com; t=1767225600;
+	h=from:to:subject:date; bh=4BwCY+Lypk/k+wT1k2n4NrUhWZ9FpZXpszAN/6VV29M=; b=DH0qnj20b6YrGDxEzhFGBO36RtNnpxFQWPCHmAvphtcF8Hq/xTc5UZreDenQ+iIa
+	Son1gycRgifu0BUq+pFYQ18TRTwYLLCTAXv8ujuKItLqr5BdlAHaBnFxkJtYB9Cf
+	SsAUBSMQAKB62dUkQfQhTIt05RNzRH4dGZOEO++Yx6YfyLFG0yJBL+fJjgdVw8vS
+	m+sXnjtADZSrgJqmTeCkDeEauxrWfUgOA5g6Aod0YW65nBz2LFqAaUEx5nK9xmYt
+	opjyGgARSAYDX9jvsBacm1vrBXqLpVdLrkZU9nzxp3+o9fvI1zb/F8+ASJaV2cz1
+	ufOyiV/Nf+DlHrT7XDnhwg==
+To: <bob@example.net>
+Subject: dmarc tree walk fixture
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Message-ID: <dmarc-fixture@example.com>
+
+Hello Bob,
+
+DMARC tree walk fixture body.

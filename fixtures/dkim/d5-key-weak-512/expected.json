@@ -1,0 +1,14 @@
+{
+  "case_id": "dkim-key-weak-512-01",
+  "expect": {
+    "dkim.key_bits": 512,
+    "dkim.key_status": "weak",
+    "dkim.result": "fail"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 8301 §3.2：Verifiers MUST NOT consider signatures using RSA keys of less than 1024 bits as valid signatures → 判 fail（MUST，不是灰区）。本条同时覆盖「裸 RSAPublicKey」编码（非 SPKI）"
+}

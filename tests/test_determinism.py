@@ -138,19 +138,36 @@ def _py_files() -> list[Path]:
 
 
 def test_source_has_no_system_clock():
-    """判定的时间只能来自快照（K7）。扫 AST 而不是 grep：注释/文档串不该误报。"""
+    """判定的时间只能来自快照（K7）。扫 AST 而不是 grep：注释/文档串不该误报。
+
+    **精确豁免**（与 `tools/check_no_clock.py` 同一口径）：`net.py::utc_now_z` 是给快照盖
+    `fetched_at` 的唯一位置。豁免按**函数行区间**判定——同文件里别处读时钟仍报红。
+    """
     forbidden = {
         "now", "today", "utcnow", "fromtimestamp", "utcfromtimestamp",
         "time", "monotonic", "perf_counter", "localtime", "gmtime",
     }
+    exempt = {("net.py", "utc_now_z")}
     offenders = []
     for path in _py_files():
         tree = ast.parse(path.read_text(encoding="utf-8"))
+        spans = _clock_exempt_spans(tree, path.name, exempt)
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                 if node.func.attr in forbidden and _looks_like_clock(node.func):
+                    if any(start <= node.lineno <= end for start, end in spans):
+                        continue
                     offenders.append("%s:%d" % (path.name, node.lineno))
     assert offenders == []
+
+
+def _clock_exempt_spans(tree: ast.AST, filename: str, exempt: set[tuple[str, str]]) -> list[tuple[int, int]]:
+    names = {name for owner, name in exempt if owner == filename}
+    spans = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in names:
+            spans.append((node.lineno, getattr(node, "end_lineno", None) or node.lineno))
+    return spans
 
 
 def _looks_like_clock(func: ast.Attribute) -> bool:
@@ -196,6 +213,34 @@ def test_json_serialization_only_in_canonical():
     assert offenders == []
 
 
+def test_runtime_has_no_third_party_imports():
+    """运行时零第三方依赖：`mailvault/` 包内只许 import 标准库与自身。
+
+    为什么要有这条：`pyyaml` 进了 `dev` extra（RFC 7208 测试集要解析 YAML）。
+    "测试期依赖不泄漏进运行时"如果只靠约定，某天有人在 `psl.py` 里 `import yaml`
+    读配置就会悄悄把发布件变成需要联网装包的东西。这条扫描把它变成一条能跑红的断言。
+    """
+    stdlib = set(sys.stdlib_module_names)
+    offenders = []
+    for path in _py_files():
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            roots: list[str] = []
+            if isinstance(node, ast.Import):
+                roots = [alias.name.split(".")[0] for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:  # 相对 import（包内）
+                    continue
+                roots = [(node.module or "").split(".")[0]]
+            for root in roots:
+                if not root or root == "__future__" or root == "mailvault":
+                    continue
+                if root not in stdlib:
+                    offenders.append("%s:%d 非标准库 import %r"
+                                     % (path.name, node.lineno, root))
+    assert offenders == [], "运行时不得依赖第三方包"
+
+
 # ── 守门脚本自身能被跑 ──────────────────────────────────────────────────
 
 
@@ -212,3 +257,43 @@ def test_gate_script_exits_zero(script):
         cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )
     assert result.returncode == 0, result.stdout.decode("utf-8", "replace")
+
+
+# ── `.eml` fixture 的字节必须被 git 放过 ────────────────────────────────
+
+
+def test_eml_fixtures_need_crlf_and_must_be_declared_minus_text():
+    """`.eml` fixture 的**字节形态本身就是被测对象**，必须 `-text`。
+
+    为什么单列一条：`.gitattributes` 的 `* text=auto eol=lf` 会在 `git add` 时把 CRLF
+    归一成 LF。而 DKIM 的 `bh=`（RFC 6376 §3.4）是对**规范化后的字节**算的——
+    归一之后**裸 clone** 起来的 fixture 会让验签全变 `body_hash` 失败、
+    四个生成器的 `--check` 全部报不一致。
+
+    这条故障**在本机看不出来**（工作区文件没被碰过），只在克隆/CI 时显形，
+    所以必须有一条断言把它钉住。判据拆成两半，缺一不可：
+
+    1. 每个 `.eml` fixture 确实含 CRLF（证明这条规则不是多余的）；
+    2. `.gitattributes` 里有匹配 `*.eml` 的 `-text`（或 `binary`）规则（证明 git 不会动它）。
+
+    实测（临时 bare 仓库 round-trip）：带规则 → 克隆后 25 处 CRLF、`--check` 全绿；
+    去掉规则 → 0 处 CRLF、`--check` 报 `message.eml 字节不一致`。
+    """
+    eml_files = sorted((ROOT / "fixtures").rglob("*.eml"))
+    assert eml_files, "没有任何 .eml fixture——这条判据会空跑"
+    for path in eml_files:
+        raw = path.read_bytes()
+        assert b"\r\n" in raw, "%s 里没有 CRLF：报文 fixture 用 CRLF 行终止" % path.name
+
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+    rules = []
+    for line in attributes.split("\n"):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        pattern, _, flags = line.partition(" ")
+        if pattern in ("*.eml", "fixtures/**/*.eml"):
+            rules.append(flags.split())
+    assert rules, ".gitattributes 里没有匹配 *.eml 的规则"
+    assert any(("-text" in flags) or ("binary" in flags) for flags in rules), \
+        "*.eml 必须声明 `-text`（或 binary），否则 git 会把 CRLF 归一、裸 clone 后 DKIM 全挂"

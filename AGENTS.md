@@ -40,17 +40,17 @@ py -3.12 tools/verify_layout_gate.py
 | --- | --- | --- |
 | `tools/check_no_network.py` | `mailvault/` 里除 `net.py` 外零 `socket/ssl/http/urllib` import | 在 `spf.py` 加 `import socket` → 红 |
 | `tools/check_no_direct_json.py` | `json.dumps/dump` 只准出现在 `canonical.py` | 在 `cli.py` 加一句 `json.dumps({})` → 红 |
-| `tools/check_no_clock.py` | 源码零 `datetime.now/today/utcnow`、`time.time/monotonic` | 加一句 `time.time()` → 红 |
-| `tools/check_fixture_hygiene.py` | fixture 只用保留域 / 文档 IP 段（M0 无 fixture → SKIP 并打印扫描数） | 放一条真实域名 → 红 |
+| `tools/check_no_clock.py` | 源码零 `datetime.now/today/utcnow`、`time.time/monotonic`；**唯一豁免** `net.py::utc_now_z`（按函数行区间，同文件别处仍红） | 加一句 `time.time()` → 红；在 net.py 非豁免函数里写 `time.time()` → 红（A06） |
+| `tools/check_fixture_hygiene.py` | fixture 只用保留域 / 文档 IP 段；上游原样件逐条登记豁免并打印理由 | 放一条真实域名 → 红 |
 | `tools/check_forbidden_terms.py` | 样例产物在 strict 口径下无禁词（M0 无产物 → SKIP 并打印扫描数） | 放一份含"攻击"的 verdict → 红 |
-| `tools/offline_smoke.py` | `audit` 路径零 socket 尝试（进程内替换 `socket.socket` 为抛异常的桩） | 在 audit 分支里联网 → 红 |
-| `tools/verify_ast_gates.py` | 上面五条门的变异验证（5/5 必须 red） | 自身即变异验证 |
+| `tools/offline_smoke.py` | `audit` 路径零 socket 尝试（进程内替换 `socket.socket` 为抛异常的桩）；**M2 起固定断言两个码**：缺三件套 → `3`，完整输入 → `0`（真实判定） | 在 audit 分支里联网 → 红 |
+| `tools/verify_ast_gates.py` | 上面五条门的变异验证（**6/6** 必须 red） | 自身即变异验证 |
 
 ## 环境事实与禁忌（2026-10-21 实测）
 
 - Windows + Git Bash。`py -0p` 实测两条通道：**3.8.8-64 与 3.12.10-64**（**没有 3.11**）；`node v24.15.0` 在但本项目不依赖 Node。
 - `python` 是商店占位符 → 本机一律 `py -3.12 ...`；`requires-python = ">=3.11"` 的 3.11 行为**以 CI 矩阵为准**，本机验不了。
-- 运行时**零第三方依赖**；测试期只依赖 `pytest`（`dev` extra）。
+- 运行时**零第三方依赖**；测试期依赖 `pytest` + `pyyaml`（`dev` extra）。`pyyaml` 只用于读 RFC 7208 测试集，`mailvault/` 包内零 `import yaml`（由 `tests/test_determinism.py::test_runtime_has_no_third_party_imports` 扫描断言）。
 - 编码：入口按 `stream.encoding` 探针决定是否 reconfigure 到 UTF-8；CI 另设 `PYTHONUTF8=1`。
 - 提交身份：`yuluo554`；远端在 M6 才建（本轮无 remote，**DoD 里不得写"CI 绿"**，只能写"本地等价校验（未接远端，CI 待首推验证）"）。
 - 禁止：把"未执行"写成已完成；未实现的能力返回 `0` 或空结果（fail-closed 到退出码 `2`）；在 tag 之后改交付面（`mailvault/`、`pyproject.toml`）。

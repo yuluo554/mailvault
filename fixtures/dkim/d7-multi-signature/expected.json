@@ -1,0 +1,14 @@
+{
+  "case_id": "dkim-multi-signature-01",
+  "expect": {
+    "dkim.result[0]": "fail",
+    "dkim.result[1]": "pass",
+    "dkim.signatures_total": 2
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 6376 §6.1：Verifiers SHOULD proceed to the next signature header field。第 1 条签名针对另一份正文 → bh 不符 → fail；第 2 条 simple/simple 对当前正文有效 → pass。**只报第一条或提前短路都会漏掉第二条**，这正是本用例要锁住的"
+}

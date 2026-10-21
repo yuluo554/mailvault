@@ -1,0 +1,13 @@
+{
+  "case_id": "dkim-length-exceeds-body-01",
+  "expect": {
+    "dkim.failure_at.kind": "length_exceeds_body",
+    "dkim.result": "permerror"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 6376 §3.5：l= MUST NOT be larger than the actual number of octets in the canonicalized message body；§6.1.1 要求不一致的取值立即 PERMFAIL。参照实现 dkimpy 会静默取全量，本项目按 RFC 判错（口径差异，已登记）"
+}

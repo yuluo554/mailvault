@@ -1,0 +1,14 @@
+{
+  "case_id": "dkim-key-nxdomain-01",
+  "expect": {
+    "dkim.data_gap": null,
+    "dkim.key_status": "missing",
+    "dkim.result": "permerror"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 6376 §6.1.2 第 3 步：查询成功但记录不存在 → PERMFAIL (no key for signature)。与 D4a 的区别是「问过了没有」而不是「没问过」"
+}

@@ -1,0 +1,25 @@
+{
+  "case_id": "dmarc-b42-deep",
+  "expect": {
+    "dmarc.author_domain": "a.b.c.d.e.f.g.h.i.j.k.example.com",
+    "dmarc.dkim_align.relaxed": true,
+    "dmarc.organizational_domain": "example.com",
+    "dmarc.result": "pass",
+    "dmarc.spf_align.relaxed": true,
+    "dmarc.walk[0].qname": "_dmarc.a.b.c.d.e.f.g.h.i.j.k.example.com",
+    "dmarc.walk[0].status": "nxdomain",
+    "dmarc.walk[1].qname": "_dmarc.g.h.i.j.k.example.com",
+    "dmarc.walk[1].status": "nxdomain",
+    "dmarc.walk[6].qname": "_dmarc.example.com",
+    "dmarc.walk[6].status": "record",
+    "dmarc.walk[7].qname": "_dmarc.com",
+    "dmarc.walk[7].status": "nxdomain",
+    "dmarc.walk_queries": 8
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 9989 Appendix B.4.2。**关键在逐跳**：Author 有 13 个标签（≥8），§4.10 步骤 4 要求一次删到只剩 7 个，于是第 2 跳直接跳到 g.h.i.j.k.example.com——中间的 h/i/j 层在**前两跳**里根本不查。此后逐级删一个标签，到 _dmarc.com 共 8 次查询（§4.10 的反滥用上限）。**反自证**：若实现漏了跳步，第 2 跳会是 h.i.j.k.example.com 且总查询数 >8，本用例的 walk[1] 与 walk_queries 两条断言会同时变红"
+}

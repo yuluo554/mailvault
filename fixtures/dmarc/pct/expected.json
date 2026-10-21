@@ -1,0 +1,19 @@
+{
+  "case_id": "dmarc-removed-tags",
+  "expect": {
+    "dmarc.disposition": "reject",
+    "dmarc.disposition_status": "determined",
+    "dmarc.policy_tag": "p",
+    "dmarc.policy_value": "reject",
+    "dmarc.result": "fail",
+    "dmarc.warning_contains.pct": "已被 RFC 9989 删除",
+    "dmarc.warning_contains.rf": "已被 RFC 9989 删除",
+    "dmarc.warning_contains.ri": "已被 RFC 9989 删除"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 9989 Appendix C.5.2 把 pct / rf / ri 列为已删除标签（pct 另见 A.6）。题面 M3 验收 2 要求 pct= 出现即告警、不得静默忽略。pct=25 的语义本工具**不解释**：按完整策略 reject 施加，同时在 warnings 里明写'已删除、不按百分比处理'——这样读者不会以为 pct=25 被尊重了。三个标签各出一条告警，逐条断言"
+}

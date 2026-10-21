@@ -1,0 +1,21 @@
+{
+  "case_id": "dmarc-psd-n",
+  "expect": {
+    "dmarc.author_domain": "dept.mail.example.com",
+    "dmarc.organizational_domain": "mail.example.com",
+    "dmarc.policy_source": "organizational",
+    "dmarc.psd": "n",
+    "dmarc.result": "pass",
+    "dmarc.spf_align.relaxed": true,
+    "dmarc.walk[1].psd": "n",
+    "dmarc.walk[1].qname": "_dmarc.mail.example.com",
+    "dmarc.walk[1].status": "record",
+    "dmarc.walk_queries": 2
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 9989 §4.10.2 步骤 1：带 `psd=n` 的记录所在一跳即 Organizational Domain，选择过程就地结束（不再往上看）。所以 dept.mail.example.com 的 Organizational Domain 是 mail.example.com，**不是** example.com——即使 example.com 也有记录、标签更少。走查在 mail.example.com 因 psd=n 停下，故只查了 2 跳。SPF 与 Author 同域 → pass。题面 M3 验收 3 的 `psd` 独立样本"
+}

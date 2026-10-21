@@ -4,9 +4,15 @@ include AGENTS.md
 include pyproject.toml
 include .gitattributes
 include data/README.md
+# M2 产出：RFC 7208 实跑结果 + 失败/口径差异逐条登记（DoD 要求，进发布件）
+include data/rfc7208-failures.md
 include docs/*.md
 include plan/*.md
 recursive-include tools *.py
 recursive-include mailvault *.py
 recursive-include mailvault/data *.dat *.json
+# DKIM fixture（M3）：11 个用例各 4 份产物 + keys/*.pem + keys/README.md
+# DMARC fixture（M4）：6 个用例各 4 份产物（entensions 同上，无需另列）
 recursive-include fixtures *.json *.yml *.md *.eml *.pem *.txt
+# 上游许可文件名不含 .txt/.md 后缀（`.LICENSE`），recursive-include 抓不到 → 显式登记
+include fixtures/spf/rfc7208-tests.LICENSE

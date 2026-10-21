@@ -134,6 +134,33 @@ def test_render_includes_evidence_and_budget():
     assert "terms" in text and "n0" in text
 
 
+def test_render_includes_the_include_tree():
+    """SPF 的 include 树要渲染成人读列表，且标出切点（题面 M2 输出要求）。"""
+    tree = {
+        "node_id": "n0", "parent": None, "domain": "example.invalid",
+        "record": "v=spf1 include:_spf.example.invalid -all", "mechanism": None,
+        "child_result": None, "consumes_term": False,
+        "terminates_parent": False, "receiver_would_stop_here": False,
+        "children": [{
+            "node_id": "n1", "parent": "n0", "domain": "_spf.example.invalid",
+            "record": "v=spf1 -all", "mechanism": "include", "child_result": "fail",
+            "consumes_term": True, "terminates_parent": False,
+            "receiver_would_stop_here": True, "children": [],
+        }],
+    }
+    entry = _entry(tree=tree)
+    text = render(_ledger([entry]))
+    assert "include 树" in text
+    assert "n1" in text and "_spf.example.invalid" in text
+    assert "切点" in text
+
+
+def test_render_tree_is_absent_when_null():
+    """没有树的条目不该出现树小节——`tree: null` 不是空树。"""
+    text = render(_ledger([_entry()]))
+    assert "include 树" not in text
+
+
 def test_render_undecidable_section_lists_reasons():
     entry = _entry(check_id="dkim.x", result="undecidable", reason="快照无 selector 的 key")
     text = render(_ledger([entry]))

@@ -1,0 +1,16 @@
+Authentication-Results: relay.example.org;
+	spf=pass smtp.mailfrom=alice@example.com;
+	dkim=pass header.d=example.com
+Received: from relay.example.org by mx.example.com with ESMTP id R3A; Thu, 1 Jan 2026 00:00:01 +0000
+From: Alice <alice@example.com>
+To: Bob <bob@example.net>
+Subject: quarterly report
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Message-ID: <reconcile-fixture@example.com>
+
+Hello Bob,
+
+Please see the attached quarterly report.
+
+Regards,
+Alice

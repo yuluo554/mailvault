@@ -1,0 +1,22 @@
+{
+  "case_id": "dmarc-b43-psd",
+  "expect": {
+    "dmarc.author_domain": "giant.bank.example.com",
+    "dmarc.dkim_align.relaxed": false,
+    "dmarc.dkim_align.strict": false,
+    "dmarc.organizational_domain": "giant.bank.example.com",
+    "dmarc.policy_source": "author",
+    "dmarc.psd": "u",
+    "dmarc.result": "pass",
+    "dmarc.spf_align.relaxed": true,
+    "dmarc.walk[1].psd": "y",
+    "dmarc.walk[1].qname": "_dmarc.bank.example.com",
+    "dmarc.walk_queries": 2
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 9989 Appendix B.4.3 的映射形态（原文的示例域用裸保留 TLD `example`，卫生门只认 example.com/.net/.org 及其子域，故整体落到 .example.com 下）。Author 自己有记录且无 psd 标签 → psd=u，第一跳不因 psd 停；第二跳在 bank.example.com 命中 psd=y → 走查停。**§4.10.2 步骤 2**：Organizational Domain 是 psd=y 记录**下面一层**，所以 Author 的 Organizational Domain 就是它自己。DKIM 标识 mail.mega.bank.example.com 的 Organizational Domain 是 mega.bank.example.com（同样是 psd=y 的下一层），与 Author 不同 → relaxed **也不**对齐；SPF 与 Author 同域 → 对齐 → pass。**反自证**：若实现把 psd=y 记录本身的域当成 Organizational Domain，Author 的 org 会变成 bank.example.com，与 DKIM 侧相同 → dkim_align.relaxed 会错成 true，本用例会红"
+}

@@ -150,15 +150,27 @@ def m05_doc_points_at_missing_tool(root: Path) -> str:
 
 
 def m06_status_conflict_one_copy(root: Path) -> str:
-    """只在一个副本里把 M1 翻成完成 → 跨副本不一致。"""
+    """只在一个副本里把一个**当前仍待办**的里程碑翻成完成 → 跨副本不一致。
+
+    靶子不能写死 M1：里程碑会随项目推进变 ✅，那时"翻成完成"就是无操作，
+    这条变异会静默退化成"什么都没改"。所以先**探测**一个当前为待办的里程碑再动手，
+    找不到就断言失败（宁可报"构造失败"，也不放行一条空跑的门）。
+    """
     rel = "README.md"
     path = root / rel
     lines = path.read_text(encoding="utf-8").split("\n")
-    hits = [i for i, ln in enumerate(lines) if re.match(r"^\|\s*\*{0,2}M1\b", ln)]
-    assert hits, "README 里找不到 M1 状态行"
-    lines[hits[0]] = re.sub(r"⬜[^|]*", "✅ 2026-10-21 ", lines[hits[0]])
+    hits = [
+        (i, int(match.group(1)))
+        for i, ln in enumerate(lines)
+        for match in [re.match(r"^\|\s*\*{0,2}M(\d+)\b", ln)]
+        if match and any(mark in ln for mark in ("⬜", "🟡", "未开始"))
+    ]
+    assert hits, "README 里找不到任何待办里程碑行（状态副本已全部完成？）"
+    index, milestone = hits[0]
+    lines[index] = re.sub(r"⬜[^|]*", "✅ 2026-10-21 ", lines[index])
     path.write_bytes("\n".join(lines).encode("utf-8"))
     assert "✅" in path.read_text(encoding="utf-8")
+    assert milestone != 0, "靶子落在豁免里程碑 M0 上"
     return "LAYOUT.STATUS"
 
 

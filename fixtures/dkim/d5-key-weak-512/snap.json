@@ -1,0 +1,18 @@
+{
+  "fetched_at": "2026-10-19T18:35:00Z",
+  "psl_date": "2026-10-20",
+  "psl_version": "2026-10-20_08-40-56_UTC",
+  "queries": [
+    {
+      "answer": [
+        "v=DKIM1; k=rsa; p=MEgCQQC8PT0G+1dkTiIUFkNQbmKgHOfRT7uAnrcNFzaHYL462dT5/2Rabhdi4BkOwC2ZPmC0+w5l6C27H8gnGZ8moUk/AgMBAAE="
+      ],
+      "qname": "selweak._domainkey.example.com",
+      "qtype": "TXT",
+      "rcode": "NOERROR",
+      "ttl": 300
+    }
+  ],
+  "resolver": "synthetic",
+  "schema_version": 1
+}

@@ -1,0 +1,10 @@
+{
+  "version": "2026-10-20_08-40-56_UTC",
+  "date": "2026-10-20",
+  "source_url": "https://publicsuffix.org/list/public_suffix_list.dat",
+  "retrieved_at": "2026-10-21T00:42:00Z",
+  "sha256": "8228e4bdac6024c058a1e67859157e468a2613b826b53de0e5cae298e1b70755",
+  "license": "MPL 2.0",
+  "license_url": "https://mozilla.org/MPL/2.0/",
+  "note": "随包冻结件：运行时只读本文件，禁止联网更新（题面 §2.5 灰区 3）。sha256 由 load_psl() 每次加载复核。"
+}

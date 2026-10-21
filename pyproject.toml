@@ -23,7 +23,15 @@ dynamic = ["version"]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+# 运行时**零第三方依赖**（dependencies = []）。下列只用于测试期：
+# - pytest：测试运行器
+# - pyyaml：只用来读 `fixtures/spf/rfc7208-tests.yml`（上游 RFC 7208 测试集）。
+#   该文件用了锚点/别名、流式集合、块标量等 YAML 特性，自己写解析器等于重造轮子且必然漏。
+#   **运行时不引入**：`mailvault/` 包内零 `import yaml`，由 `tests/test_determinism.py`
+#   的 `test_runtime_has_no_third_party_imports` 扫描断言。
+# - cryptography：只给 `tools/gen_dkim_fixtures.py` 签样本 + `tests/test_dkim.py`
+#   的参照实现对账用。**运行时不引入**（零依赖 RSA 在 `mailvault/crypto/`）。
+dev = ["pytest>=8", "pyyaml>=6", "cryptography>=42"]
 
 [project.scripts]
 mailvault = "mailvault.cli:main"

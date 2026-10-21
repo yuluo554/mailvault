@@ -1,0 +1,22 @@
+Received: from relay.example.org by mx.example.com; Thu, 1 Jan 2026 00:00:00 +0000
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed; s=sel20261021; i=@example.com; t=1767225600;
+	h=from:to:subject:date; bh=KPbdW24k+8ed2PIxu8/UTl6pXffVkvcSgBmqRj2iIlU=; b=hRs/1ebDqAliRjkvrVtlNlVsNhIxJyE9DC+ChuosD4TKF94Rtgfj2KdSQye/hPHw
+	mW8W9M5sxLrMA4u5t5/kquu+bwddici6aNdT7+yK5dYGRGU5r+bfFqe5h2mYG3qo
+	V8XVn84ZBpPPM9ZhG5eKrzRT70fIa8k73mvymTPqCG2g1Qm+Rz8wl1eg4BirrwZv
+	Kewcc0MZ7ntYjbBcJjOvjxjtHRvjTlCavXIVf3Ig/3gmAzb3gYKq8TYlMy/ZEdG2
+	NaELzqaFX7b/RwvkB6lpqkkL8VL1gkm1Crt3pV460hUlk82a3G5XR4GZ1BWVBEZz
+	/s2q8iJEqlkfKDN+hjXhVw==
+From: Alice <alice@example.com>
+To: Bob <bob@example.net>
+Subject: quarterly report
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Message-ID: <fixture-0001@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+
+Hello Bob,
+
+Attached is the quarterly report.
+
+Regards,
+Alice

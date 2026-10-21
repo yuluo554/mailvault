@@ -13,8 +13,18 @@
 # PSL 冻结件：字节即版本证据，克隆时不得归一
 mailvault/data/public_suffix_list.dat -text
 
+# `.eml` fixture：**字节形态本身就是被测对象**，克隆时不得归一。
+# 报文用 CRLF；DKIM 的 `bh=`（RFC 6376 §3.4）是对**规范化后的字节**算的，
+# `text=auto eol=lf` 会在 `git add` 时把 CRLF 归一成 LF——实测（临时 git 仓库）：
+# worktree 25 处 CRLF、索引 blob **0** 处。后果是**裸 clone 之后**
+# `tools/gen_*_fixtures.py --check` 全报不一致、DKIM 验签全变 `body_hash` 失败。
+# 这是 M6"干净环境（裸 clone 直跑）"的前置条件，M5 实装对账 fixture 时发现并修。
+*.eml -text
+
 # RFC 7208 测试集原样入仓：保留上游字节（含其 BSD 式许可头）
 fixtures/spf/rfc7208-tests.yml -text
+# 上游许可原文：第 1 条要求"保留版权声明"，字节本身就是被许可对象
+fixtures/spf/rfc7208-tests.LICENSE -text
 
 # Windows 专用脚本才允许 CRLF（当前无）
 *.bat text eol=crlf

@@ -12,16 +12,46 @@
 
 ## 状态
 
-版本 `v0.1.0.dev0`（开发中）。**骨架阶段**：CLI 契约、确定性序列化、退出码、AST 守门已落地；求值器（SPF / DKIM / DMARC / 对账 / what-if）尚未实现，未实现的子命令**明确返回退出码 2**，不会假装成功。
+版本 `v0.1.0.dev0`（开发中）。**M5 完成**：`mailvault audit` 在同一份快照上跑
+**SPF（RFC 7208 §4–§7）、DKIM 验签（RFC 6376 + RFC 8301）、DMARC（RFC 9989 §4.10）
+与三方对账（RFC 8601）**，产出两轨账本；`whatif` / `diff` 也已接上真实现。
+
+- **SPF**：RFC 7208 测试集 **202/203 = 99.5%**（门槛 95%），唯一一条差异是 void 超限判
+  `undecidable`（原文是 SHOULD）——逐条登记在 `data/rfc7208-failures.md`，由三条断言盯着。
+  预算账本逐格可读（term / MX / PTR / void / depth），include 树**完整展开**并标出切点。
+- **DKIM**：多签名**逐条独立求值、不短路**；每条给 `selector/d/i/a/c`、`bh_matches`、
+  `key_bits`、`key_status`（`ok`/`revoked`/`missing`/`weak`/`invalid`）与失败定位。
+  **零依赖 RSA**（`crypto/der.py` + `crypto/rsa.py`，只用标准库 `hashlib`/`pow`）。
+  规范化对表 RFC 6376 §3.4.5 的三个示例与 §3.4.3/§3.4.4 的空正文基准哈希。
+  **无快照密钥 → `undecidable`（不是 `fail`）**；RSA < 1024 位 → `fail`（RFC 8301 §3.2 MUST）。
+- **DMARC**：`_dmarc` **DNS Tree Walk**（RFC 9989 §4.10 步骤 1–7，含 ≥8 标签时的跳步），
+  Author → Organizational → PSD 的发现顺序；`psd=n` / `psd=y` 按 §4.10.2 改变
+  Organizational Domain。`spf_align` 与 `dkim_align` 各出 **relaxed / strict 两个值，不合并**。
+  `disposition` 按 `p=` / `sp=` / `np=` + 存在性推导，`t=y` 降一级。
+  **`pct=` / `rf=` / `ri=` 出现即告警"已被 RFC 9989 删除"，不静默忽略**。
+  输出带 `psl_version` / `psl_date`（来自快照）与 PSL 对照值。
+- **三方对账**：把报文里的 `Authentication-Results` 与本工具的重算结论对起来，三分类
+  **一致 / 矛盾 / 无法判定**。每条**矛盾**给 **≥2 条可能解释 + 各自要查什么**
+  （例：内容网关在验签之后重写了正文 vs 报文在归档途中被改）。
+  `authserv-id` 不在 `trusted_authserv_ids` 里、**或不可解析** → fail-closed 判
+  `undecidable`（空的可信列表**不等于**全部可信）。`Received` 链给跳数、单调性与
+  时钟回退——时间**只取报文头里的字面值**，从不与系统时钟比较。
+  **`--strict-evidence`** 下账本不得出现"攻击/伪造"等定性词（对账在装配期自检）。
+- **what-if 反事实**：`--change p=reject` 这样改一条配置，**只重跑**同一套求值器，
+  再与基线账本做**结构差分**；差分**双向可逆**（把差分反转施加到候选，逐字节得到基线）。
+  `--rua` 可挂一份 RUA 聚合报告，回答"上 `p=reject` 会打断谁"——输出标注
+  **只覆盖报告期内、且依赖报告方口径**；没有 RUA 数据时判 `undecidable` 并列出所需输入。
+- 同一输入两次运行 `verdict.json` 字节级一致；断网下 `audit` 返回真实退出码；
+  退出码由 `exits.exit_code_for` **一处**计算（多模块共用优先级，不各自算）。
 
 | 里程碑 | 内容 | 状态 |
 | --- | --- | --- |
 | **M0** | 方法论装订 + 计划套件 + 可运行骨架（CLI 契约 / 退出码 / 确定性序列化 / AST 守门 / CI） | ✅ 2026-10-21 |
-| **M1** | 数据先行：快照 schema + 抓取器 + RFC 7208 测试集 + PSL 冻结件 | ⬜ 未开始 |
-| **M2** | SPF `check_host()` + 预算账本 + 完整 include 树 | ⬜ 未开始 |
-| **M3** | DKIM 验签（零依赖 RSA）+ 五类失败 fixture | ⬜ 未开始 |
-| **M4** | DMARC tree walk + 双算对齐 + 处置 | ⬜ 未开始 |
-| **M5** | 三方对账 + what-if 差分 + RUA 关联 | ⬜ 未开始 |
+| **M1** | 数据先行：快照 schema + 抓取器 + RFC 7208 测试集 + PSL 冻结件 | ✅ 2026-10-21 |
+| **M2** | SPF `check_host()` + 预算账本 + 完整 include 树 | ✅ 2026-10-21 |
+| **M3** | DKIM 验签（零依赖 RSA）+ 五类失败 fixture | ✅ 2026-10-21 |
+| **M4** | DMARC tree walk + 双算对齐 + 处置 | ✅ 2026-10-21 |
+| **M5** | 三方对账 + what-if 差分 + RUA 关联 | ✅ 2026-10-21 |
 | **M6** | 发布：tag + Release + 留档 | ⬜ 未开始 |
 
 > 发布状态以 Release 页与 `plan/` 为准；随包 README 只描述版本与能力。
@@ -34,34 +64,46 @@
 py -3.12 -m mailvault --version
 py -3.12 -m mailvault --help
 
-# 跑工程门（布局门 + 三条 AST 守门）
+# 跑工程门（布局门 + 三条 AST 守门 + fixture 卫生 + 断网冒烟）
 py -3.12 tools/check_sprint_layout.py
 py -3.12 tools/check_no_network.py
 py -3.12 tools/check_no_direct_json.py
 py -3.12 tools/check_no_clock.py
+py -3.12 tools/check_fixture_hygiene.py
+py -3.12 tools/offline_smoke.py
 
-# 跑测试
+# 跑守门的变异验证（每条守门都必须能跑红，否则它是假门）
+py -3.12 tools/verify_layout_gate.py        # 11/11
+py -3.12 tools/verify_ast_gates.py          # 6/6
+py -3.12 tools/verify_module_mutations.py   # 11/11（判定逻辑）
+
+# 跑测试（开发期需 pytest + pyyaml + cryptography；运行时零第三方依赖）
+py -3.12 -m pip install -e ".[dev]"
 py -3.12 -m pytest
 ```
 
-## 计划中的用法
+## 用法
 
 ```bash
-# 1) 抓一份快照（唯一联网动作）
+# 1) 抓一份快照（唯一联网动作；不给 --resolver 时用固定公共解析器，保证可复算）
 mailvault snapshot fetch --eml message.eml --query query.json -o snap.json
 
-# 2) 断网审计：产出 verdict.json + verdict.md
+# 2) 断网审计：产出 verdict.json + verdict.md（SPF + DKIM + DMARC + 三方对账）
 mailvault audit --snapshot snap.json --eml message.eml --query query.json
+mailvault audit ... --strict-evidence          # 禁用"攻击/伪造"等定性词
 
-# 3) 反事实差分（--change 可重复）
+# 3) 反事实差分（--change 可重复；include: 用冒号形态）
 mailvault whatif --snapshot snap.json --eml message.eml --query query.json \
                  --change p=reject --change t=y
+mailvault whatif ... --change include:_spf.example.net --rua rua.json
 
-# 4) 比较两份账本
+# 4) 比较两份账本（写 diff.json + diff.md，不覆盖 verdict.*）
 mailvault diff --baseline before.json --candidate after.json
 ```
 
-> 以上命令的**参数形态已冻结**（`plan/03` §2），实现随 M1–M5 补齐。
+> 以上命令的**参数形态已冻结**（`plan/03` §2），四条子命令全部可用。
+> `--change` 的合法键：`p=` / `sp=` / `np=` / `t=` / `all=` / `include:<domain>`；
+> 未知键或非法值 → 退出码 3（不做静默忽略）。
 > 无 RUA 数据时 what-if 输出 `undecidable` + 所需输入清单，不猜。
 
 ## 退出码
@@ -88,6 +130,7 @@ mailvault diff --baseline before.json --candidate after.json
 | [`plan/05-里程碑与发布.md`](plan/05-里程碑与发布.md) | DoD、门验证、发布口径 |
 | [`plan/06-交付对标与决策.md`](plan/06-交付对标与决策.md) | 评分对标、缺口、风险登记 |
 | [`data/README.md`](data/README.md) | 查证记录、数据许可、合成数据纪律 |
+| [`data/rfc7208-failures.md`](data/rfc7208-failures.md) | RFC 7208 实跑结果 + 失败/口径差异逐条登记（M2） |
 | [`docs/ledger-format.md`](docs/ledger-format.md) | 账本字段与 `evidence_ref` 约定 |
 | [`AGENTS.md`](AGENTS.md) | 方法论锚点与布局门（新对话先读） |
 

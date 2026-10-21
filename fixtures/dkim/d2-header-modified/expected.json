@@ -1,0 +1,15 @@
+{
+  "case_id": "dkim-header-modified-01",
+  "expect": {
+    "dkim.bh_matches": true,
+    "dkim.failure_at.kind": "header_hash",
+    "dkim.key_status": "ok",
+    "dkim.result": "fail"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 6376 §6.1.3 第 4 步：正文哈希仍匹配（body 未动），但已签名头字段变了 → b= 验签不过。本工具给 kind=header_hash + basis，不编造具体头名"
+}

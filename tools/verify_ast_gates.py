@@ -62,6 +62,15 @@ CASES = [
         "# 结论\n\n该头疑似伪造。\n",
         "禁词",
     ),
+    (
+        # 精确豁免的**阴性对照**：net.py 是唯一有豁免的文件，但豁免只到 utc_now_z 这一个函数。
+        # 同文件里别处读时钟必须照样报红——否则"函数级豁免"就悄悄退化成了"文件级放行"。
+        "A06 豁免文件里越界读时钟（net.py 非豁免函数）",
+        "tools/check_no_clock.py",
+        "mailvault/net.py",
+        "\n\ndef _mutant_outside_exemption():\n    import time\n    return time.time()\n",
+        "time.time",
+    ),
 ]
 
 

@@ -1,0 +1,14 @@
+{
+  "case_id": "dkim-body-modified-01",
+  "expect": {
+    "dkim.bh_matches": false,
+    "dkim.key_status": "ok",
+    "dkim.result": "fail"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 6376 §6.1.3 第 3 步：正文哈希与 bh= 不符 → PERMFAIL (body hash did not verify)。签名后改动正文，正文哈希必变；因为 bh= 是单向摘要，本工具给出 basis 而不编造行号。key_status=ok：密钥在 §6.1.2 就先取到了（RFC 的步骤顺序），失败点在正文哈希"
+}

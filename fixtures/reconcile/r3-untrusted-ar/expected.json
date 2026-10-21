@@ -1,0 +1,20 @@
+{
+  "case_id": "reconcile-untrusted-ar-01",
+  "expect": {
+    "recon.cross_check.result": "undecidable",
+    "reconcile.claimed[0].authserv_id": "relay.example.org",
+    "reconcile.class[0]": "undecidable",
+    "reconcile.class[1]": "undecidable",
+    "reconcile.entries": 2,
+    "reconcile.trusted_authserv_ids": [
+      "mx.example.com"
+    ],
+    "reconcile.warning[0].contains": "fail-closed"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "题面 §3 的 M4 验收 ③：注入伪造 Authentication-Results。报文的 authserv-id 是 relay.example.org，而 query.json 只把 mx.example.com 列为可信 MTA → authserv-id 不在可信列表里 → **fail-closed 判 undecidable**（authres_status #86 的教训：不可信/不可解析时 fail-**open** 会把他人写的头当成有效证据）。注意本样本的重算结果与头里写的**恰好一致**（都是 pass），但『一致』本身不构成证据——一张不可信的头说什么都不算数。trusted_authserv_ids 为空**不等于**全部可信：空列表时任何 AR 都判 undecidable"
+}

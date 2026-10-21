@@ -1,0 +1,23 @@
+{
+  "case_id": "reconcile-forwarded-01",
+  "expect": {
+    "recon.cross_check.result": "pass",
+    "reconcile.claimed[0].method": "spf",
+    "reconcile.claimed[0].result": "fail",
+    "reconcile.claimed[1].method": "dkim",
+    "reconcile.claimed[1].result": "pass",
+    "reconcile.class[0]": "consistent",
+    "reconcile.class[1]": "consistent",
+    "reconcile.entries": 2,
+    "reconcile.received.hop_count": 3,
+    "reconcile.received.monotonic": true,
+    "reconcile.recomputed[0].result": "fail",
+    "reconcile.recomputed[1].result": "pass"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "题面 §3 的 M4 验收 ①：转发器导致 SPF fail 但 DKIM 过。列表转发器把信封发件人改写为 list.example.org 下的地址（SRS 形态），本工具的 SPF 按 §4.4.2『只认 MAIL FROM』用该域求值 → 该域 SPF 为 -all → fail；DKIM 的签名域仍是 example.com 且报文未改 → pass。报文头里收件 MTA 也如实写了 spf=fail / dkim=pass，所以两侧**一致**。这条样本专门证『一致』一侧：只测矛盾会放过一个永远判 contradiction 的实现。Received 三跳时间沿链递减 → monotonic=True（RFC 5321 §4.4 的接收顺序）"
+}

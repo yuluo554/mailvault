@@ -1,0 +1,13 @@
+{
+  "case_id": "dkim-missing-tag-01",
+  "expect": {
+    "dkim.failure_at.kind": "missing_tag",
+    "dkim.result": "permerror"
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 6376 §6.1.1：缺 §3.5 标为 REQUIRED 的标签（此处删掉 d=）→ PERMFAIL (signature missing required tag)"
+}

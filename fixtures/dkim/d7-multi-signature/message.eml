@@ -1,0 +1,29 @@
+Received: from relay.example.org by mx.example.com; Thu, 1 Jan 2026 00:00:00 +0000
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=sel20261021; i=@example.com; t=1767225600;
+	h=from:to:subject:date; bh=m7qJv3jbBwX4s2pY01DjVFrKra1jdNYw27wBVozXUpk=; b=rJWj17EnSj8MhE6vFisjCefjhOiQMdx2bLBlxoKx2CMFzEpGu0GWO2Evw0ClzS4s
+	KKEVc1HydeYaTvqaE0IuwSwWwN6x+F085mQ0VzugS1yRVitVU22X9JevS3HlGiJz
+	yV7WK/qjZ18IP5vHVaRQr+hooQ8874Zjl9UR2UJWiaa58QG5u0+dYnNdEzxc1LHg
+	VPoGYn/MYqWPMbIpomL1wMnDlQDyQsjw5g7LMthI97M7IAe2EOB+ayXo0w+nWvAt
+	LavWoSLS5Olfc1FGKgbDHQdUn+WyA5KdUswchYY30crgMyCn6akpoLlfLpwr3aW3
+	Dudl+RSxNBsJUq0ljtYO9w==
+DKIM-Signature:v=1; a=rsa-sha256; c=simple/simple; d=example.com; s=sel20261021; i=@example.com; t=1767225600;
+	h=from:to:subject:date; bh=KPbdW24k+8ed2PIxu8/UTl6pXffVkvcSgBmqRj2iIlU=; b=BqjjKEeLZN8HOyb4wpv89t5c9b6JzcH+FTSoNTRdp7Z3H6F+/qbabEc3ulXS+wP4
+	w5d9Sm+XUwlhJgO12EtAnZCdE1plW+0f8twryvGsE6yp8NU7jv59ukq8VWUMIcbJ
+	5NydbM/uTiUe/mp7+406PVW2RwwsFX5ZbfRbJWLmiaS/AOoY3kwJohtNFVrNe777
+	GBveydeBlzSaCDAdNG9JDAkz6e5ASQ9S+jFx5oSeaUszzdoFl7f9xxrUaML1Qp9V
+	AAy6cblXooF8A+dlAeOFv5a723nyVuTCx5OZmNHGQZeeKMQlQA1T3EfiGFjQuFZG
+	UY7ZN+CGjM1iuzr5aUlmbQ==
+From: Alice <alice@example.com>
+To: Bob <bob@example.net>
+Subject: quarterly report
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Message-ID: <fixture-0001@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+
+Hello Bob,
+
+Attached is the quarterly report.
+
+Regards,
+Alice

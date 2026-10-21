@@ -1,0 +1,7 @@
+{
+  "changes": [
+    "p=reject",
+    "all=-all"
+  ],
+  "note": "与 `mailvault whatif --change` 同形；逐条施加到快照副本后重跑 M2–M4"
+}

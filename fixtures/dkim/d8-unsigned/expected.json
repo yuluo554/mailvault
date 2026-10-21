@@ -1,0 +1,13 @@
+{
+  "case_id": "dkim-unsigned-01",
+  "expect": {
+    "dkim.result": "none",
+    "dkim.signatures_total": 0
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 6376 §1：未签名的报文没有 DKIM 结论 → none。把「未签名」判成 fail 会让账本对所有普通邮件报错"
+}

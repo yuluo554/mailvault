@@ -1,0 +1,52 @@
+{
+  "fetched_at": "2026-10-19T18:35:00Z",
+  "psl_date": "2026-10-20",
+  "psl_version": "2026-10-20_08-40-56_UTC",
+  "queries": [
+    {
+      "answer": [
+        "v=spf1 ip4:192.0.2.0/24 -all"
+      ],
+      "qname": "example.com",
+      "qtype": "TXT",
+      "rcode": "NOERROR",
+      "ttl": 300
+    },
+    {
+      "answer": [
+        "192.0.2.10"
+      ],
+      "qname": "example.com",
+      "qtype": "A",
+      "rcode": "NOERROR",
+      "ttl": 300
+    },
+    {
+      "answer": [
+        "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtlnGVHmaUMrAxi1MBxSzlargS6j0csjMH6OYGeRvxXHalWixI5PTP7D9SqoiSSZR/zsedLiNymPO9OSkvjsdkq881tFdh6qVhQU0rQERAF8jHuJnIU+GP/cgzSK9RRJbRlqbNMx6yBQ0j4/klZe0Ui7QUaul+la0iI+bjyJ2UXVrKspgcYPNZeHt4MCOJ2XyBqCA3CE9k6knEsnepY+jmHCI5JCOFT/3h0fO6rF4eX26uYtSAuDUq+y953wP/lWyxnvzFIY+gvV5j7Kirb+EZuH2wymOQour+1yWmuWB49xIty+2skbTZgsecM9VieOhOPfivds+EdwG1qosVa7yTwIDAQAB"
+      ],
+      "qname": "selrec._domainkey.example.com",
+      "qtype": "TXT",
+      "rcode": "NOERROR",
+      "ttl": 300
+    },
+    {
+      "answer": [
+        "v=DMARC1; p=none; rua=mailto:dmarc@example.com"
+      ],
+      "qname": "_dmarc.example.com",
+      "qtype": "TXT",
+      "rcode": "NOERROR",
+      "ttl": 300
+    },
+    {
+      "answer": [],
+      "qname": "_dmarc.com",
+      "qtype": "TXT",
+      "rcode": "NXDOMAIN",
+      "ttl": 300
+    }
+  ],
+  "resolver": "synthetic",
+  "schema_version": 1
+}

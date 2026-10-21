@@ -1,0 +1,25 @@
+{
+  "case_id": "dmarc-b41-simple",
+  "expect": {
+    "dmarc.author_domain": "example.com",
+    "dmarc.disposition": null,
+    "dmarc.disposition_status": "not_applicable",
+    "dmarc.dkim_align.relaxed": true,
+    "dmarc.dkim_align.strict": false,
+    "dmarc.organizational_domain": "example.com",
+    "dmarc.result": "pass",
+    "dmarc.spf_align.relaxed": true,
+    "dmarc.spf_align.strict": true,
+    "dmarc.walk[0].qname": "_dmarc.example.com",
+    "dmarc.walk[0].status": "record",
+    "dmarc.walk[1].qname": "_dmarc.com",
+    "dmarc.walk[1].status": "nxdomain",
+    "dmarc.walk_queries": 2
+  },
+  "input": {
+    "eml": "message.eml",
+    "query": "query.json",
+    "snapshot": "snap.json"
+  },
+  "why": "RFC 9989 Appendix B.4.1：Author 与 MAIL FROM 同域 → SPF 两种模式都对齐；DKIM 标识是子域 signing.example.com，与 Author 同 Organizational Domain example.com（§4.10.2 步骤 3：取标签最少的那条记录）→ relaxed 对齐、strict 不对齐。§5.3.5：有对齐的 Authenticated Identifier → pass，处置 not_applicable。`_dmarc.com` 用 NXDOMAIN 表达原文的'没有记录'（§3.2.13 口径）"
+}
