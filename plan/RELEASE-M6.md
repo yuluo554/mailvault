@@ -85,13 +85,19 @@ M6 为第②步把卫生门的扫描面从 `fixtures/` 扩到 `fixtures/ + examp
 
 | 项 | 结果 |
 |---|---|
-| 导出方式 | `git archive <tree> | tar -x` 到临时目录 |
-| `pytest` | 见下方回填 |
-| 六条守门 | 见下方回填 |
-| 生成器 `--check` | 见下方回填 |
-| `mailvault --version` | 见下方回填 |
+| 导出方式 ① | `git archive HEAD \| tar -x` 到临时目录（**无 `.git`**，`.gitattributes` 与 `-text` 规则一并生效） |
+| 导出方式 ② | 本地 `git clone --bare` → `git clone` round-trip（走完整索引/属性链） |
+| `.eml` 字节 | 两种形态都保住 CRLF（`r2-gateway-body` 25/25、`p-reject` 10/10、`b41` 16/16） |
+| `mailvault --version` | `mailvault 1.0.0` |
+| `pytest` | **470 passed**（两种形态一致） |
+| 布局门 + 三类变异 | 全绿 / **11/11** / **8/8** / **11/11** |
+| 六条守门 | 网络 · 裸 JSON · 时钟 · 卫生 · 禁词 · 断网冒烟 全部全绿 |
+| 发布门 `--offline` | 全绿（7 条判据） |
+| 生成器 `--check` | 5 个（dkim / dmarc / reconcile / whatif / examples）全部逐字节一致 |
+| 汇总 | **18/18 项通过**（两种形态各跑一遍） |
 
-> 结果在 M6 收尾时按实测回填（本栏仍是 tag 前事实：验的是**同一棵树**，不涉及远端）。
+> 这一步证明的是"**交付树自足**"：不依赖工作区里没入仓的文件、不依赖 `.git` 元数据。
+> 它**不替代** V6 的"发布件真下载 + 解包"复核——那一步要等 tag 与 Release 在远端。
 
 ---
 
