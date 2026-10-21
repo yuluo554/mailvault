@@ -140,12 +140,55 @@ Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠
 |---|---|
 | CI run id（`main` 首推，**红**） | `39526291036` |
 | CI run id（tag `v1.0.0` 首推，**红**） | `39526365982` |
-| CI run id（修复后 `main`） | `待回填` |
-| CI run id（修复后 tag `v1.0.0` 重指） | `待回填` |
-| push 数 = run 数 | `待回填` |
+| CI run id（修复后 `main`） | `39526981564` |
+| CI run id（修复后 tag `v1.0.0` 重指） | `39527171060` |
+| push 数 = run 数 | `4 = 4` |
 | 远端 | `git@github.com:yuluo554/mailvault.git`（公开） |
-| GitHub Release | `待回填` |
-| tag OID / 源码包 sha256 | `待回填`（tag 重指后重算） |
+| GitHub Release | https://github.com/yuluo554/mailvault/releases/tag/v1.0.0 |
+| tag OID（annotated tag 对象） | `fbbd25fc10375e3affcb8ca995e020a98c9fe0ba` |
+| tag 提交 OID | `c84b0c85376aabbcecbdc646d02c6002b3430400` |
+| 源码包 sha256（`mailvault-1.0.0.tar.gz`） | `4140fcf97e2c36a9b1498745371424ab99dd988cf8128a445b7c37a5928df524`（497 992 字节） |
+
+**tag 重指说明**：`v1.0.0` 首次指向 `195b68d`（CI 一红），按用户决定修完 `ci.yml` 后
+`git push --force` 重指到 `c84b0c8`。重指前该 tag **没有** Release、无人消费；
+重指后 tag run `39527171060` 五个 job 全绿。**交付面（`mailvault/` 与 `pyproject.toml`）
+在两次 tag 之间零差异**——改的只有 `.github/` 与 `plan/`。
+
+### 2.3 CI 实录（修复后）
+
+| run | 事件 | 提交 | 结果 |
+|---|---|---|---|
+| `39526981564` | push `main` | `c84b0c8` | ✅ 5/5 job（四矩阵 + offline 嵌套容器） |
+| `39527171060` | push `v1.0.0` | `c84b0c8` | ✅ 5/5 job |
+
+每个 job 内**发布门 `--offline`** 与 `pytest`（470 passed）均为 success；
+offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 + 零第三方 import 断言。
+
+### 2.4 发布件复核（V6：真下载 + 解包）
+
+| 步 | 实测 |
+|---|---|
+| `gh release download v1.0.0` | 497 992 字节 |
+| sha256 | `4140fcf9…8df524`，与本地 `git archive` 逐字节相同；GitHub 记录的 asset digest 也相同 |
+| 解包后跑 18 项 | **18/18 全绿**（`pytest` 470 passed、三类变异、六条守门、发布门 `--offline`、五个生成器 `--check`） |
+| `.eml` 字节 | 解包后 CRLF 仍在（`r2` 25/25、`p-reject` 10/10） |
+
+### 2.5 发布门三态实测
+
+| 模式 | 跑在 | 实测 |
+|---|---|---|
+| `--offline` | CI 两个 job + 本机 | **全绿**（7 条判据；不碰网络，`--network none` 容器里也全绿） |
+| `--pre-tag` | tag **之前**（本机） | tag 前全绿（9 条）；**tag 之后必然红**（`tag 尚未创建` 已不成立）——这正是三态分开的意义 |
+| `--online` | 推送 / Release **之后**（本机） | **全绿**（17 条判据） |
+
+`--online` 的关键两条判据（不是"所有历史 run 都绿"——历史不可变，那样写只会得到一条永远红、
+然后被人删掉的假门）：
+
+| 判据 | 实测 |
+|---|---|
+| **认证发布树的 run 全绿** | tag 提交 `c84b0c8` 上的 run `39526981564` / `39527171060` **均 success** |
+| **历史失败逐条登记** | 首推的 2 条红 run（`39526291036` / `39526365982`）**都在留档里**；漏记即红 |
+| push 数 = run 数 与远端一致 | 留档 `4 = 4`，远端真实 push 构建 4 条 |
 
 ---
 
@@ -157,14 +200,15 @@ Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠
 | # | 条目 | 证据 | 三态 |
 |---|---|---|---|
 | 1 | 脱敏四步 + 产物扫描 | 禁词门 PASS 11 份；卫生门 PASS 108 份；样例绝对路径直扫 PASS | 实现 |
-| 2 | 干净环境验证（`git archive` 目录直跑 / 本地 bare 仓库 round-trip） | 见 §1.7 | 实现 |
-| 3 | 发布件**真下载 + 解包**复核（V6） | 需 tag 与 Release 先在远端 | 待首推 |
-| 4 | 建仓 `gh repo create` + 首推 + CI run id 入库（V1、G4） | 需远端 | 待首推 |
-| 5 | `git tag v1.0.0` + GitHub Release 三件套 | 需远端 | 待首推 |
-| 6 | Python 3.11 行为（V2、G5） | 本机只有 3.8.8 / 3.12.10；**本机不适用**，以 CI 矩阵（3.11 / 3.13）为准 | 不适用 |
-| 7 | CI 跨平台实跑（ubuntu / windows × 3.11 / 3.13） | 同 #4；未接远端时只能做"本地等价校验" | 待首推 |
+| 2 | 干净环境验证（`git archive` 目录 / 本地 bare clone / 发布件解包） | 见 §1.7 与 §2.4，三种形态各 **18/18** | 实现 |
+| 3 | 发布件**真下载 + 解包**复核（V6） | §2.4：sha256 与 asset digest 一致，解包后 18/18 | 实现 |
+| 4 | 建仓 `gh repo create` + 首推 + CI run id 入库（V1、G4） | §2.1–§2.3：push 数 = run 数 = 4；run id 已回填 | 实现 |
+| 5 | `git tag v1.0.0` + GitHub Release 三件套 | §2.2：Release 页在位，附源码包 + 示例产物 + fixture 清单 + PSL 版本 | 实现 |
+| 6 | Python 3.11 行为（V2、G5） | CI 矩阵 `py3.11 · ubuntu` 与 `py3.11 · windows` 两个 job 全步骤 success；**本机不适用**（只有 3.8.8 / 3.12.10） | 不适用（已由 CI 覆盖） |
+| 7 | CI 跨平台实跑（ubuntu / windows × 3.11 / 3.13） | §2.3：run `39526981564` 与 `39527171060` 各 5/5 job success | 实现 |
 | 8 | 真实收件方 `Authentication-Results` 与真实 RUA 报告的方言覆盖（V8、V9） | 本仓全部 AR/RUA 都是自建最小形态；**发布后收反馈**才能验 | 不适用 |
-| 9 | 发布门三态 `--pre-tag` / `--offline` / `--online` 可复跑 | `tools/check_release.py`（三模式） | 实现 |
+| 9 | 发布门三态 `--pre-tag` / `--offline` / `--online` 可复跑 | `tools/check_release.py`（三模式）；§2.5 实测 | 实现 |
 
-> **口径**：`待首推` 的三条（#3/#4/#5/#7）在第二栏回填后一并转为 `实现`。
+> **口径**：`待首推` 已全部转为 `实现`（#3/#4/#5/#7）；两条 `不适用` 是**真的不适用**
+> 而不是没做——#6 由 CI 矩阵覆盖（本机无 3.11 通道），#8 只能等真实用户反馈。
 > 未验证项**不得**用"计划里写了"代替"已发生"（`plan/05` §5 口径）。

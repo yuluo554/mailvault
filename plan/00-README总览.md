@@ -82,6 +82,8 @@ M4 会输出形如"报文头里写 `spf=pass`，我用同一份快照算出 `fai
 | what-if 差分可复算且能反推基线 | `fixtures/whatif/` 2 例（`?all`→`-all` 让退出码 0→1；`p=none`→`p=reject` 让处置 none→reject）+ RUA 报告 + 变更集合；`apply_ops(候选, invert(ops))` 与**另一次独立 `audit` 产物**逐字节相等（含 `ledger_id`）；差分双跑一致；RUA 缺数据判 `undecidable` + 所需输入清单且**不影响退出码**；两个生成器 `--check` 幂等 | ✅ M5 2026-10-21 |
 | 语义类口径有能跑红的守门 | `tools/verify_module_mutations.py` **11/11 全部如期变红**（B01–B09 对账/what-if，B10/B11 DMARC 跳步与数据缺口）；每组要求"指定的那条测试"变红且植入后文件**仍能编译**（排除语法错导致的假红） | ✅ M5 2026-10-21 |
 | 裸 clone 直跑（发布前置） | 临时 bare 仓库 round-trip：克隆出来的仓库 `pytest` 441 passed + 七条门全绿 + 四个生成器 `--check` 逐字节一致。修了 `.eml` fixture 缺 `-text` 的归一化缺陷（不带规则时克隆后 25 处 CRLF 归一成 0 处、生成器全报不一致）；另加断言盯住 | ✅ 2026-10-21（本地 bare 仓库 round-trip；GitHub 真下载复核见 V6） |
+| 脱敏四步 + 产物扫描 | 禁词门从 `SKIP` 转真判定：`examples/` 4 用例 10 份真产物（真 CLI 跑真 fixture + `--strict-evidence`，`gen_examples.py --check` 幂等）→ **PASS 11 份**；卫生门扫描面扩到 `fixtures/` + `examples/` → **PASS 108 份**（另 2 份上游原样件逐条豁免）；样例绝对路径直扫 PASS | ✅ M6 2026-10-21 |
+| 发布（tag + Release + 真 CI） | `v1.0.0` 已推、GitHub Release 已发布（附 `git archive` 源码包 + 示例产物 + fixture 清单 + PSL 版本）；CI run `39526981564`（main）与 `39527171060`（tag）各 **5/5 job success**（3.11/3.13 × ubuntu/windows + 无网络嵌套容器）；**真下载 + 解包**复核 sha256 一致且 18/18 全绿 | ✅ M6 2026-10-21 |
 
 ---
 
@@ -95,7 +97,7 @@ M4 会输出形如"报文头里写 `spf=pass`，我用同一份快照算出 `fai
 | **M3 DKIM** | 验签 + 五类失败 fixture + `undecidable` 语义 | RFC 6376 §3.4/§3.5、RFC 8301 §3.2 落地；无 key 不判 fail | ✅ 2026-10-21 |
 | **M4 DMARC** | tree walk + 双算对齐 + 处置 + PSL 版本 + 旧标签告警 | RFC 9989 B.4.1–B.4.3 复现；`pct` 告警 | ✅ 2026-10-21 |
 | **M5 对账与 what-if** | 三方对账（双解释 + strict 模式）+ 差分 + RUA 关联 | 3 个对账 fixture 通过；差分可复算；标注报告期口径 | ✅ 2026-10-21 |
-| **M6 发布** | `git tag v1.0.0` + GitHub Release 附产物 + 发布留档三件套 | 见 `plan/05` §4 | ⬜ 未开始 |
+| **M6 发布** | `git tag v1.0.0` + GitHub Release 附产物 + 发布留档三件套 | 见 `plan/05` §4 | ✅ 2026-10-21 |
 
 **M6 DoD 三件套**：① `git tag` 与 GitHub Release（附 `verdict.json`/`verdict.md` 示例、fixture 清单、PSL 版本）；② 发布留档（README 首屏可跑通 + `data/README.md` 数据纪律 + `docs/ledger-format.md`）；③ 仓库公开发布，署名 `yuluo554`。
 

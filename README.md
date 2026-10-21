@@ -52,10 +52,11 @@
 | **M3** | DKIM 验签（零依赖 RSA）+ 五类失败 fixture | ✅ 2026-10-21 |
 | **M4** | DMARC tree walk + 双算对齐 + 处置 | ✅ 2026-10-21 |
 | **M5** | 三方对账 + what-if 差分 + RUA 关联 | ✅ 2026-10-21 |
-| **M6** | 发布：tag + Release + 留档 | ⬜ 未开始 |
+| **M6** | 发布：tag + Release + 留档 | ✅ 2026-10-21 |
 
-> 发布状态以 Release 页与 `plan/` 为准；随包 README 只描述版本与能力。
-> 本仓库尚无远端：CI 为本地等价校验，**未跑过真实 CI**（首推待 M6）。
+> 发布状态以 [Release 页](https://github.com/yuluo554/mailvault/releases/tag/v1.0.0) 与 `plan/` 为准；
+> 随包 README 只描述版本与能力。CI 实测：3.11 / 3.13 × ubuntu / windows 四矩阵 + 无网络容器 job
+> 共 5/5 全绿（`plan/RELEASE-M6.md` §2）。
 
 ## 30 秒上手
 

@@ -1,15 +1,19 @@
-# HANDOFF-M6（M5 收尾 → M6 开工）
+# HANDOFF-M6（M6 收尾 —— **本项目最后一个里程碑，已全部完成**）
 
 > 用法（用户侧启动命令）：`/goal 读取 "<项目绝对路径>\plan\HANDOFF-M6.md" 继续完成任务`
 > **第一动作 = 跑布局门**：`py -3.12 tools/check_sprint_layout.py`（必须全绿，红了先修布局）。
 > 本文件内一律相对路径。
+>
+> **状态**：M0–M6 全部 ✅（2026-10-21）。本文件同时是**收尾交接单**：读它是为了
+> 复核/续做，不是为了"接着往下做"——已无待办里程碑。
 
 ---
 
 ## 一、当前进度 + 证据
 
 **已完成：M0（装订 + 骨架）+ M1（数据先行）+ M2（SPF）+ M3（DKIM）+ M4（DMARC）+
-M5（三方对账 + what-if 差分 + RUA 关联）**，均 2026-10-21。**只剩 M6（发布）。**
+M5（三方对账 + what-if 差分 + RUA 关联）+ M6（发布）**，均 2026-10-21。
+**发布已落地**：https://github.com/yuluo554/mailvault/releases/tag/v1.0.0
 
 | 交付 | 证据（实测命令 + 结果） |
 |---|---|
@@ -122,29 +126,34 @@ M5（三方对账 + what-if 差分 + RUA 关联）**，均 2026-10-21。**只剩
 
 ---
 
-## 三、下一棒待办（M6：发布）
+## 三、本棒（M6）已完成 —— 逐条对照原待办
 
-按 `plan/05` §2 的 M6 DoD + §4 发布口径：
+原待办九条全部落地，逐条给出**实测证据**：
 
-1. **脱敏四步**（`plan/05` §4）：产物扫描（禁词门从 SKIP 转真判定 —— 先往 `examples/` 放
-   已归档的 `verdict.json` / `verdict.md` 样例，再跑 `tools/check_forbidden_terms.py`）；
-   确认 `fixtures/` / `examples/` 无真实域名与私有路径；确认账本无绝对路径（K9）。
-2. **干净环境验证**：把仓库 `git archive` 到一个临时目录，**裸 clone 口径直跑**
-   （`py -3.12 -m mailvault --version` + `pytest` + 全部门）。
-3. **建远端 + 首推**：`gh repo create yuluo554/mailvault --public`；首推后**回填 CI run id**
-   与 `push 数 = run 数` 对账结果（`plan/05` §4.4）。
-4. **`git tag v1.0.0`**：先在本棒把 `__version__` 定版（`0.1.0.dev0` → `1.0.0`），
-   **只改 `mailvault/__init__.py` 一处**；再写 `tests/test_version_consistency.py`
-   （断言 `__init__` / `pyproject` / `README` 状态行三处一致，`plan/05` §4.2）。
-5. **GitHub Release**：附 `verdict.json` / `verdict.md` 示例、fixture 清单、PSL 版本；
-   源码包用 `git archive` 口径（**不是** GitHub 自动生成的 Source code 包，`plan/05` §4.1）。
-6. **`plan/RELEASE-M6.md`**（两栏：`## 一、tag 前事实` / `## 二、tag 后追加` + `## 覆盖对账`
-   小节 + ≥3 条三态行）——布局门的 `LAYOUT.RELEASE` 会在 M6 翻 ✅ 后逐条断言。
-   **tag 树内的留档不写 tag 的 OID / 包 sha256**（自指，写一次失效一次）。
-7. **发布门三模可复跑**：`--pre-tag` / 离线 / `--online`（`plan/05` §2 的 M6 DoD 最后一条）。
-8. **`plan/HANDOFF-M6.md` 之后**：M6 是最后一个里程碑，收尾时把状态副本四处一起翻 ✅，
-   并把未验证项（V1/V2/V6/V8/V9）在 §5 表里更新。
-9. 可选：`docs/backlog.md` 里 M5 浮现的两条（G17 Received 深分析、G19 SRS 模拟）要不要进二期。
+| # | 原待办 | 结果 |
+|---|---|---|
+| 1 | 脱敏四步 + 产物扫描 | `examples/` 4 用例 / 10 份真产物（`gen_examples.py`，真 CLI 跑真 fixture + `--strict-evidence`，`--check` 逐字节 + 退出码幂等）；禁词门 **PASS 11 份**（从 SKIP 转真判定）；卫生门扫描面扩到 `fixtures/` + `examples/` → **PASS 108 份**；样例绝对路径直扫 PASS（`tests/test_examples.py`） |
+| 2 | 干净环境验证 | **三种形态各 18/18**：`git archive` 目录 / 本地 bare clone round-trip / **发布件真下载解包**。`pytest` 470 passed；三类变异 11/11 · 8/8 · 11/11；五个生成器 `--check` 幂等 |
+| 3 | 建远端 + 首推 + CI run id 入库 | `gh repo create yuluo554/mailvault --public` 完成；**push 数 = run 数 = 4**；run id 全部回填（见 `plan/RELEASE-M6.md` §2.2） |
+| 4 | 定版 + `v1.0.0` tag | `__version__` `0.1.0.dev0` → `1.0.0`（只改一处）；`tests/test_version_consistency.py` 4 条；tag 已推 |
+| 5 | GitHub Release | 已发布，附 `git archive` 源码包（sha256 `4140fcf9…8df524`）+ 4 例示例产物 + 五组 fixture 清单 + PSL 版本/日期/sha256 |
+| 6 | `plan/RELEASE-M6.md` 两栏 + 覆盖对账 | 两栏 + `覆盖对账` 小节 + **9 条三态行**；`LAYOUT.RELEASE` 实测 `两栏:True 覆盖对账:True 三态行:9` |
+| 7 | 发布门三模可复跑 | `tools/check_release.py`：`--offline` 7 条全绿（CI 两 job 都跑）、`--pre-tag` tag 前全绿 / tag 后如期红、`--online` **17 条全绿** |
+| 8 | 四处状态副本翻 ✅ + V 表更新 | 四处一起翻 ✅（`LAYOUT.STATUS` 4 处 × 7 里程碑全一致）；V1/V2/V6 转 ✅，V7/V8/V9 仍 ⬜（只能等真实用户反馈） |
+| 9 | `docs/backlog.md` 的 G17/G19 是否进二期 | 未动（二期决策，不属发布面） |
+
+**M6 期发现的、只在远端才显形的缺陷（重要）**：
+
+- `container.options: --network none` 与 Actions 的 job 容器模型**互斥**
+  （`docker: conflicting options ... network-modes`，实测 run `39526291036`）。
+  本机没有 docker，这个缺陷在本机**永远看不出来**。
+- 修法：`offline` job 改为普通 runner + `docker run --network none` 起**嵌套**容器，
+  镜像由新增 `.github/offline.Dockerfile` 构建。修复后 run `39526981564` / `39527171060` 各 5/5 全绿。
+- `v1.0.0` 首指 `195b68d`（CI 一红），修完后 `push --force` 重指到 `c84b0c8`。
+  **交付面（`mailvault/` + `pyproject.toml`）两次 tag 之间零差异**。
+
+**无剩余待办**。若要继续，只有二选一：① 收真实用户反馈补 V7/V8/V9；
+② 按 `docs/backlog.md` 开二期（G17 Received 深分析 / G19 SRS 模拟）。
 
 ---
 
@@ -209,10 +218,18 @@ M5（三方对账 + what-if 差分 + RUA 关联）**，均 2026-10-21。**只剩
 | 测试文件 docstring 里的 `\*` | `SyntaxWarning: invalid escape sequence` | 用 `raw` 字符串或改措辞 |
 | 测试 docstring 里写中文引号 `"` | Python 字符串 SyntaxError（`"显式 none 必须说清"这里没有 method 声明""`） | 用 `『』` 或转义 |
 | **`dict`/`list` 进 `subject`** | 渲染层按 `k=v` 平铺，嵌套值变成不可读的 repr | `subject` 只放**标量**；逐跳/逐条明细进 `trace` |
+| **Actions 的 job 容器不能写 `--network none`**（M6 实测） | `container.options: --network none` → `docker: conflicting options: cannot attach both user-defined and non-user-defined network-modes`（run `39526291036` 的 `Initialize containers` exit 125）。**本机没有 docker，这个缺陷永远看不出来** | 不把 job 放进容器；改用普通 runner + `docker run --network none` 起**嵌套**容器（`.github/offline.Dockerfile`）。`--network none` 只在 `docker run` 这一层合法 |
+| **`gh api` 的 endpoint 不能以 `/` 开头**（Git Bash） | `/user/repos` 被当成 `D:/program/Git/user/repos`（路径改写） | 写 `gh api user/repos`（不带前导 `/`） |
+| **`git ls-remote` / `git push` 走 HTTPS 在本机超时** | `github.com:443` 连不上（21s 超时），但 `api.github.com` 通、SSH 通 | 远端用 **SSH**：`git@github.com:yuluo554/mailvault.git`；查远端状态用 `gh api` / `gh run` |
+| **Git Bash 的 `tar` 把 `C:` 当远端主机** | `tar -xzf C:/...tar.gz` → `Cannot connect to C: resolve failed` | 用 `py -3.12 -c "import tarfile..."` 解包，或 `cygpath -u` 后传 POSIX 路径 |
+| **布局门变异的靶子会随进度失效（M06 又踩一次）** | 全部里程碑 ✅ 后，"找待办里程碑翻成完成"找不到靶子 | `m06` 改为**两态探测**：有待办就翻成完成，全完成就把一个已完成翻回待办（都是单副本冲突）。另加"必须改动字节"的断言，防静默空跑 |
+| **发布门的判据不能写成"所有历史 run 都绿"** | 历史不可变：首推的 2 条红 run 永远红，那样写会得到一条永远红、然后被删掉的门 | 判据改为「**认证发布树的 run 全绿**」+「**历史失败逐条登记**」（漏记即红）。假门的反面不是更严，是**判据指错了对象** |
 
 ---
 
-## 六、DoD 逐项 checklist（本棒，全部已实测）
+## 六、DoD 逐项 checklist
+
+### 6.1 M5 的 DoD（已实测，保留备查）
 
 - [x] 三个对账 fixture：转发 SPF fail/DKIM 过（`r1-forwarded`）、网关改正文（`r2-gateway-body`）、注入伪造 AR（`r3-untrusted-ar`）
 - [x] 每条 `contradiction` 有 ≥2 条解释 + 各自验证方法（且 <2 条时模块内 `InternalError`）
@@ -236,17 +253,33 @@ M5（三方对账 + what-if 差分 + RUA 关联）**，均 2026-10-21。**只剩
 - [x] **本地 bare 仓库 round-trip 直跑**：克隆出来的仓库 `pytest` 436 + 七条门 + 四个生成器 `--check` 全绿（并修掉 `.eml` 缺 `-text` 的归一化缺陷 + 加断言盯住）
 - [x] 4 处状态副本 + `plan/06` 缺口表同步；`plan/04` §3.5/§3.6 记 M5 数据与判据口径
 
-**DoD 未达成项（如实登记）**：
+**M5 期 DoD 未达成项 —— M6 已结清其中两条**：
 
-- CI 实跑：**未接远端，未跑过**。首推后需回填 run id（M6）。
-- Python 3.11 行为：**本机验不了**，以 CI 矩阵为准。
+- ~~CI 实跑：未接远端，未跑过~~ → **已结清**（M6：run `39526981564` / `39527171060` 各 5/5 全绿）。
+- ~~Python 3.11 行为：本机验不了~~ → **已结清**（CI `py3.11 · ubuntu` / `py3.11 · windows` 全绿）。
+
+**仍未达成（如实登记，均为已知限制，不是欠账）**：
+
 - 对账只重算 `spf`/`dkim`/`dmarc` 三类 method；`iprev`/`auth`/`arc` 一律 `undecidable`（G16）。
 - Received 链不做"乱序 / 跳数异常 / 跨时区压缩"的语义分析（G17）。
 - ARC 辅助证据未实现；预留的恒 `null` `arc` 键**已删掉**（G18）。
 - SRS 影响模拟未实现；`--change` 只支持六个键（G19）。
 - what-if 只改**快照**，不改 `query.json`（"换发信 IP 会怎样"做不到，G20）。
 - 对账与 what-if 在**真实收件方的** `Authentication-Results` / 真实 RUA 报告上的表现：
-  **未验**，登记 `plan/05` §5 的 V8/V9。
+  **未验**，登记 `plan/05` §5 的 V8/V9（只能等真实用户反馈）。
+
+### 6.2 M6 的 DoD（本棒，全部已实测）
+
+- [x] 脱敏四步：禁词门 **PASS 11 份**（从 `SKIP` 转真判定）；卫生门 **PASS 108 份**（面扩到 `examples/`）；样例无绝对路径；样例 `tool_version` 全部 `=1.0.0`
+- [x] 干净环境验证：`git archive` 目录 / 本地 bare clone / **发布件真下载解包** 三种形态各 **18/18**
+- [x] 建仓 `gh repo create yuluo554/mailvault --public` + 首推；**push 数 = run 数 = 4**；run id 已回填
+- [x] `git tag v1.0.0`（annotated，重指到 `c84b0c8`）+ GitHub Release 已发布
+- [x] `plan/RELEASE-M6.md` 两栏 + 覆盖对账 + 9 条三态行（`LAYOUT.RELEASE` 实测通过）
+- [x] 发布门三态可复跑：`--offline` 7 条 / `--pre-tag` 9 条 / `--online` **17 条** 全绿（各自只在成立的那一态为绿）
+- [x] 版本三处一致（`tests/test_version_consistency.py` 4 条）；`pytest` **470 passed**
+- [x] 变异验证：布局 **11/11**（M06 已改为"全完成态也能构造单副本冲突"）+ AST **8/8**（新增 A07/A08）+ 语义 **11/11**
+- [x] 发布件复核 V6：`gh release download` → sha256 `4140fcf9…8df524` 与本地 `git archive` 及 GitHub asset digest **三方一致**；解包后 18/18
+- [x] 四处状态副本 + `plan/06` 缺口表（G4/G5 关闭）+ `plan/05` §5 的 V1/V2/V6 转 ✅ 同步
 
 ---
 
@@ -258,7 +291,7 @@ py -3.12 tools/check_sprint_layout.py
 
 # 1) 三类变异验证（改门/改判定后必跑）
 py -3.12 tools/verify_layout_gate.py       # 11/11 必须红
-py -3.12 tools/verify_ast_gates.py         # 6/6 必须红
+py -3.12 tools/verify_ast_gates.py         # 8/8 必须红
 py -3.12 tools/verify_module_mutations.py  # 11/11 必须红（每组 ~5–10s）
 
 # 2) 各守门
@@ -268,6 +301,11 @@ py -3.12 tools/check_no_clock.py
 py -3.12 tools/check_fixture_hygiene.py
 py -3.12 tools/check_forbidden_terms.py
 py -3.12 tools/offline_smoke.py
+
+# 2b) 发布门三态（CI 只跑 --offline；--pre-tag 在 tag 后必然红，属预期）
+py -3.12 tools/check_release.py --offline
+py -3.12 tools/check_release.py --pre-tag     # 仅 tag 之前
+py -3.12 tools/check_release.py --online      # 推送/Release 之后（17 条判据）
 
 # 3) 测试与 CLI
 py -3.12 -m pip install -e ".[dev]"      # 开发期需要 pytest + pyyaml + cryptography
@@ -280,6 +318,12 @@ py -3.12 tools/gen_dkim_fixtures.py --check
 py -3.12 tools/gen_dmarc_fixtures.py --check
 py -3.12 tools/gen_reconcile_fixtures.py --check
 py -3.12 tools/gen_whatif_fixtures.py --check
+py -3.12 tools/gen_examples.py --check     # M6：examples/ 逐字节 + 退出码未漂
+
+# 4b) 干净环境 / 发布件复核（M6）
+git archive HEAD | tar -x -C "$(cygpath -m "$TEMP")/clean"     # 或本地 bare clone
+py -3.12 tools/check_release.py --online                        # 远端/tag/Release/CI 实录
+gh release download v1.0.0 --pattern "mailvault-1.0.0.tar.gz" --dir "$DL"   # V6 真下载
 
 # 5) 端到端：对账（Git Bash 里必须用 cygpath 转 Windows 路径）
 OUT="$(cygpath -w "$TEMP")\\mv6"; mkdir -p "$(cygpath -u "$OUT")"

@@ -150,27 +150,52 @@ def m05_doc_points_at_missing_tool(root: Path) -> str:
 
 
 def m06_status_conflict_one_copy(root: Path) -> str:
-    """只在一个副本里把一个**当前仍待办**的里程碑翻成完成 → 跨副本不一致。
+    """只在一个副本里翻转一个里程碑的状态 → 跨副本不一致。
 
-    靶子不能写死 M1：里程碑会随项目推进变 ✅，那时"翻成完成"就是无操作，
-    这条变异会静默退化成"什么都没改"。所以先**探测**一个当前为待办的里程碑再动手，
-    找不到就断言失败（宁可报"构造失败"，也不放行一条空跑的门）。
+    **靶子随进度失效**（坑表第 19 条）：早期写死 M1，后来 M1 变 ✅，"翻成完成"就成了无操作。
+    现在的做法是先**探测**，两态各有一条构造路径：
+
+    - 有**待办**里程碑 → 在 README 里把它翻成完成（默认路径）；
+    - **全部已完成**（M6 之后就是这种终态）→ 在 README 里把一个已完成的翻回待办。
+      这仍是**单副本**冲突：其它三处副本仍是 ✅，`LAYOUT.STATUS` 必须报红。
+
+    两态都构不出来才断言失败（宁可报"构造失败"，也不放行一条空跑的门）。
     """
     rel = "README.md"
     path = root / rel
-    lines = path.read_text(encoding="utf-8").split("\n")
-    hits = [
-        (i, int(match.group(1)))
+    original = path.read_text(encoding="utf-8")
+    lines = original.split("\n")
+
+    pending = [
+        (i, int(m.group(1)))
         for i, ln in enumerate(lines)
-        for match in [re.match(r"^\|\s*\*{0,2}M(\d+)\b", ln)]
-        if match and any(mark in ln for mark in ("⬜", "🟡", "未开始"))
+        for m in [re.match(r"^\|\s*\*{0,2}M(\d+)\b", ln)]
+        if m and any(mark in ln for mark in ("⬜", "🟡", "未开始"))
     ]
-    assert hits, "README 里找不到任何待办里程碑行（状态副本已全部完成？）"
-    index, milestone = hits[0]
-    lines[index] = re.sub(r"⬜[^|]*", "✅ 2026-10-21 ", lines[index])
+    done = [
+        (i, int(m.group(1)))
+        for i, ln in enumerate(lines)
+        for m in [re.match(r"^\|\s*\*{0,2}M(\d+)\b", ln)]
+        if m and "✅" in ln
+    ]
+
+    if pending:
+        candidates = [(i, k) for i, k in pending if k != 0]
+        if not candidates:
+            raise AssertionError("唯一的待办里程碑是豁免的 M0——靶子不可用")
+        index, milestone = candidates[0]
+        lines[index] = re.sub(r"⬜[^|]*", "✅ 2026-10-21 ", lines[index])
+    elif done:
+        candidates = [(i, k) for i, k in done if k != 0]
+        if not candidates:
+            raise AssertionError("唯一的已完成里程碑是豁免的 M0——靶子不可用")
+        index, milestone = candidates[0]
+        lines[index] = re.sub(r"✅[^|]*", "⬜ 未开始 ", lines[index])
+    else:
+        raise AssertionError("README 里既没有待办也没有已完成里程碑行——状态副本读不到？")
+
+    assert "\n".join(lines) != original, "变异没改动任何字节（靶子失效）"
     path.write_bytes("\n".join(lines).encode("utf-8"))
-    assert "✅" in path.read_text(encoding="utf-8")
-    assert milestone != 0, "靶子落在豁免里程碑 M0 上"
     return "LAYOUT.STATUS"
 
 

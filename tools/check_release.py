@@ -233,7 +233,7 @@ def online_checks(report: Report) -> None:
 
     bad_runs = []
     for run_id in run_ids:
-        code, out = _gh("run", "view", run_id, "--json", "conclusion,status,event")
+        code, out = _gh("run", "view", run_id, "--json", "conclusion,status,event,headSha")
         if code != 0:
             bad_runs.append("%s 查不到" % run_id)
             continue
@@ -242,25 +242,59 @@ def online_checks(report: Report) -> None:
         except json.JSONDecodeError:
             bad_runs.append("%s 无法解析" % run_id)
             continue
-        if info.get("conclusion") != "success":
-            bad_runs.append("%s conclusion=%s" % (run_id, info.get("conclusion")))
-    report.check("CI run 实录均成功", not bad_runs,
-                 "；".join(bad_runs[:3]) if bad_runs else "%d 条 run 全部 success" % len(run_ids))
+        if info.get("conclusion") not in {"success", "failure"}:
+            bad_runs.append("%s conclusion=%s（未完成或异常）" % (run_id, info.get("conclusion")))
+    report.check("留档里的 run id 都真实存在", not bad_runs,
+                 "；".join(bad_runs[:3]) if bad_runs else "%d 条 run 均可在远端查到" % len(run_ids))
 
-    # 首推之外的 push 也不许有失败（收尾提交会再触发一次 CI）。
+    # ── 认证"当前发布的这棵树"的那批 run 必须全绿 ────────────────────────
+    #
+    # **为什么不能要求"所有历史 run 都绿"**：历史是不可变的。首推时暴露的
+    # `--network none` 容器冲突是**真实发生过**的失败（run 39526291036 /
+    # 39526365982），它必须留在留档里。把判据写成"一条失败都不许有"，结果只能是
+    # 这条门永远红、然后被人悄悄删掉——那是假门。真正要认证的是：
+    # **现在 tag 指向的那棵树，它的构建全绿**；且**任何历史失败都不得被漏记**。
+    code, tag_commit = _git("rev-parse", "%s^{commit}" % tag)
+    tag_commit = tag_commit.strip()
+    report.check("能解析 tag 的提交 OID", code == 0 and len(tag_commit) == 40, tag_commit)
+
     code, out = _gh("run", "list", "--event", "push", "--limit", "50",
-                    "--json", "databaseId,conclusion")
+                    "--json", "databaseId,headSha,conclusion,headBranch")
+    runs: list[dict] = []
     if code == 0:
         try:
             runs = json.loads(out)
         except json.JSONDecodeError:
             runs = []
-        failed = [str(r.get("databaseId")) for r in runs if r.get("conclusion") == "failure"]
-        report.check("无失败的 push 构建", not failed and len(runs) >= len(run_ids),
-                     "失败 run: %s" % failed if failed
-                     else "push 事件 run %d 条，无失败（实录 %d 条）" % (len(runs), len(run_ids)))
     else:
-        report.check("无失败的 push 构建", False, "gh run list 失败：%s" % out[:80])
+        report.check("能列出 push 构建", False, "gh run list 失败：%s" % out[:80])
+
+    if runs:
+        certifying = [r for r in runs if r.get("headSha") == tag_commit]
+        not_green = [str(r["databaseId"]) for r in certifying
+                     if r.get("conclusion") != "success"]
+        report.check("认证发布树的 run 全绿", bool(certifying) and not not_green,
+                     "tag 提交 %s 上的 run: %s%s"
+                     % (tag_commit[:8],
+                        ", ".join("%s=%s" % (r["databaseId"], r.get("conclusion"))
+                                  for r in certifying),
+                        ("；非 success: " + ", ".join(not_green)) if not_green else ""))
+
+        # 历史失败必须逐条登记在留档里——漏记就是"把红灯抹掉"。
+        failures = [str(r["databaseId"]) for r in runs if r.get("conclusion") == "failure"]
+        undocumented = [run_id for run_id in failures if run_id not in run_ids]
+        report.check("历史失败逐条登记", not undocumented,
+                     "未登记的历史失败 run: %s" % undocumented if undocumented
+                     else ("%d 条历史失败全部已登记" % len(failures) if failures
+                           else "无历史失败"))
+
+        # push 数 = run 数：留档声明的数量必须等于远端真实 push 构建数。
+        if push_row:
+            claimed_push, claimed_run = int(push_row.group(1)), int(push_row.group(2))
+            report.check("push 数 = run 数 与远端一致",
+                         claimed_push == claimed_run == len(runs),
+                         "留档 %d = %d，远端 push 构建 %d 条"
+                         % (claimed_push, claimed_run, len(runs)))
 
 
 def main(argv: list[str] | None = None) -> int:
