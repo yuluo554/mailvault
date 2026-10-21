@@ -142,7 +142,8 @@ Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠
 | CI run id（tag `v1.0.0` 首推，**红**） | `39526365982` |
 | CI run id（修复后 `main`） | `39526981564` |
 | CI run id（修复后 tag `v1.0.0` 重指） | `39527171060` |
-| push 数 = run 数 | `4 = 4` |
+| CI run id（收尾提交 `d76829c`） | `39528967472` |
+| push 数 = run 数 | `5 = 5` |
 | 远端 | `git@github.com:yuluo554/mailvault.git`（公开） |
 | GitHub Release | https://github.com/yuluo554/mailvault/releases/tag/v1.0.0 |
 | tag OID（annotated tag 对象） | `fbbd25fc10375e3affcb8ca995e020a98c9fe0ba` |
@@ -160,9 +161,12 @@ Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠
 |---|---|---|---|
 | `39526981564` | push `main` | `c84b0c8` | ✅ 5/5 job（四矩阵 + offline 嵌套容器） |
 | `39527171060` | push `v1.0.0` | `c84b0c8` | ✅ 5/5 job |
+| `39528967472` | push `main`（收尾提交，只动非交付面） | `d76829c` | ✅ 5/5 job |
 
 每个 job 内**发布门 `--offline`** 与 `pytest`（470 passed）均为 success；
 offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 + 零第三方 import 断言。
+收尾提交 `d76829c` 相对 tag **只动** `plan/` `README` `tools/`（`POST_TAG_SCOPE`），
+`mailvault/` 与 `pyproject.toml` 零差异（`DELIVERABLE_UNCHANGED`）。
 
 ### 2.4 发布件复核（V6：真下载 + 解包）
 
@@ -188,7 +192,7 @@ offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 +
 |---|---|
 | **认证发布树的 run 全绿** | tag 提交 `c84b0c8` 上的 run `39526981564` / `39527171060` **均 success** |
 | **历史失败逐条登记** | 首推的 2 条红 run（`39526291036` / `39526365982`）**都在留档里**；漏记即红 |
-| push 数 = run 数 与远端一致 | 留档 `4 = 4`，远端真实 push 构建 4 条 |
+| push 数 = run 数 与远端一致 | 留档 `5 = 5`，远端真实 push 构建 5 条 |
 
 ---
 
@@ -202,7 +206,7 @@ offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 +
 | 1 | 脱敏四步 + 产物扫描 | 禁词门 PASS 11 份；卫生门 PASS 108 份；样例绝对路径直扫 PASS | 实现 |
 | 2 | 干净环境验证（`git archive` 目录 / 本地 bare clone / 发布件解包） | 见 §1.7 与 §2.4，三种形态各 **18/18** | 实现 |
 | 3 | 发布件**真下载 + 解包**复核（V6） | §2.4：sha256 与 asset digest 一致，解包后 18/18 | 实现 |
-| 4 | 建仓 `gh repo create` + 首推 + CI run id 入库（V1、G4） | §2.1–§2.3：push 数 = run 数 = 4；run id 已回填 | 实现 |
+| 4 | 建仓 `gh repo create` + 首推 + CI run id 入库（V1、G4） | §2.1–§2.3：push 数 = run 数 = 5；run id 已回填 | 实现 |
 | 5 | `git tag v1.0.0` + GitHub Release 三件套 | §2.2：Release 页在位，附源码包 + 示例产物 + fixture 清单 + PSL 版本 | 实现 |
 | 6 | Python 3.11 行为（V2、G5） | CI 矩阵 `py3.11 · ubuntu` 与 `py3.11 · windows` 两个 job 全步骤 success；**本机不适用**（只有 3.8.8 / 3.12.10） | 不适用（已由 CI 覆盖） |
 | 7 | CI 跨平台实跑（ubuntu / windows × 3.11 / 3.13） | §2.3：run `39526981564` 与 `39527171060` 各 5/5 job success | 实现 |

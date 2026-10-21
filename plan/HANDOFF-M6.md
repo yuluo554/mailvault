@@ -134,7 +134,7 @@ M5（三方对账 + what-if 差分 + RUA 关联）+ M6（发布）**，均 2026-
 |---|---|---|
 | 1 | 脱敏四步 + 产物扫描 | `examples/` 4 用例 / 10 份真产物（`gen_examples.py`，真 CLI 跑真 fixture + `--strict-evidence`，`--check` 逐字节 + 退出码幂等）；禁词门 **PASS 11 份**（从 SKIP 转真判定）；卫生门扫描面扩到 `fixtures/` + `examples/` → **PASS 108 份**；样例绝对路径直扫 PASS（`tests/test_examples.py`） |
 | 2 | 干净环境验证 | **三种形态各 18/18**：`git archive` 目录 / 本地 bare clone round-trip / **发布件真下载解包**。`pytest` 470 passed；三类变异 11/11 · 8/8 · 11/11；五个生成器 `--check` 幂等 |
-| 3 | 建远端 + 首推 + CI run id 入库 | `gh repo create yuluo554/mailvault --public` 完成；**push 数 = run 数 = 4**；run id 全部回填（见 `plan/RELEASE-M6.md` §2.2） |
+| 3 | 建远端 + 首推 + CI run id 入库 | `gh repo create yuluo554/mailvault --public` 完成；**push 数 = run 数 = 5**；run id 全部回填（见 `plan/RELEASE-M6.md` §2.2） |
 | 4 | 定版 + `v1.0.0` tag | `__version__` `0.1.0.dev0` → `1.0.0`（只改一处）；`tests/test_version_consistency.py` 4 条；tag 已推 |
 | 5 | GitHub Release | 已发布，附 `git archive` 源码包（sha256 `4140fcf9…8df524`）+ 4 例示例产物 + 五组 fixture 清单 + PSL 版本/日期/sha256 |
 | 6 | `plan/RELEASE-M6.md` 两栏 + 覆盖对账 | 两栏 + `覆盖对账` 小节 + **9 条三态行**；`LAYOUT.RELEASE` 实测 `两栏:True 覆盖对账:True 三态行:9` |
@@ -272,7 +272,7 @@ M5（三方对账 + what-if 差分 + RUA 关联）+ M6（发布）**，均 2026-
 
 - [x] 脱敏四步：禁词门 **PASS 11 份**（从 `SKIP` 转真判定）；卫生门 **PASS 108 份**（面扩到 `examples/`）；样例无绝对路径；样例 `tool_version` 全部 `=1.0.0`
 - [x] 干净环境验证：`git archive` 目录 / 本地 bare clone / **发布件真下载解包** 三种形态各 **18/18**
-- [x] 建仓 `gh repo create yuluo554/mailvault --public` + 首推；**push 数 = run 数 = 4**；run id 已回填
+- [x] 建仓 `gh repo create yuluo554/mailvault --public` + 首推；**push 数 = run 数 = 5**；run id 已回填
 - [x] `git tag v1.0.0`（annotated，重指到 `c84b0c8`）+ GitHub Release 已发布
 - [x] `plan/RELEASE-M6.md` 两栏 + 覆盖对账 + 9 条三态行（`LAYOUT.RELEASE` 实测通过）
 - [x] 发布门三态可复跑：`--offline` 7 条 / `--pre-tag` 9 条 / `--online` **17 条** 全绿（各自只在成立的那一态为绿）
