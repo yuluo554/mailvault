@@ -214,6 +214,13 @@ def deliverable_checks(report: Report) -> None:
     「无 `.git`」「无 tag」显式 SKIP；「浅克隆」判 FAIL（历史被截断会让判据空验成绿）。
     """
     code, out = _git("rev-parse", "--is-inside-work-tree")
+    if code == 127:
+        # 环境里**没有 git 可执行文件**（离线镜像，实测 CI offline job）：不适用，不是失败。
+        report.skip("交付面未被改动",
+                    "环境里没有 git（离线镜像）——不适用，**不计为通过**")
+        report.skip("登记偏差无僵尸条目",
+                    "环境里没有 git（离线镜像）——不适用，**不计为通过**")
+        return
     if code != 0 or out.strip() != "true":
         report.skip("交付面未被改动", "无 .git 工作树（sdist 解包树）——不适用，**不计为通过**")
         report.skip("登记偏差无僵尸条目", "无 .git 工作树——不适用，**不计为通过**")
@@ -315,6 +322,17 @@ def deliverable_checks(report: Report) -> None:
 
 
 def _git(*args: str) -> tuple[int, str]:
+    """跑 git。**环境里没有 git 时返回 127 而不是抛异常**。
+
+    为什么必须挡：`--offline` 也在**没有 git 的环境**里跑 —— `.github/offline.Dockerfile`
+    基于 `python:3.12-slim`，镜像里**没装 git**（那个 job 要证明的正是"零网络、零安装步骤"）。
+    不挡的话 `subprocess.run(["git", ...])` 直接抛 `FileNotFoundError`，
+    于是"这一态不适用"变成了"门崩掉"——实测 CI run `39906099706` 的 `offline` job 就是这样红的。
+    """
+    import shutil
+
+    if shutil.which("git") is None:
+        return 127, "git 不在 PATH 上"
     result = subprocess.run(["git", *args], cwd=str(ROOT),
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return result.returncode, result.stdout.decode("utf-8", "replace").strip()
