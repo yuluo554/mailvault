@@ -167,23 +167,34 @@ def _git(root: Path, *args: str) -> tuple[int, str]:
 
 
 #: 临时仓库的提交身份（不能依赖被测机器的全局 git 配置）。
-GIT_ID = ("-c", "user.name=ast-mut", "-c", "user.email=ast-mut@example.invalid",
-          "-c", "commit.gpgsign=false")
+#: **`git tag -a` 也要身份**——它是 annotated tag，要建一个 tag 对象；只在 `commit` 上加
+#: `-c user.name=…` 会在没有全局身份的机器上崩在 `git tag`（实测：CI 两个 job 全红，
+#: 本机因为 `~/.gitconfig` 有身份而看不出来）。所以这里**写进副本自己的 local config**，
+#: 一次设置、后面所有 git 命令（含 tag）都继承。
+GIT_ID = (("user.name", "ast-mut"), ("user.email", "ast-mut@example.invalid"))
 
 
 def _init_git_repo(root: Path) -> None:
-    """把副本变成**带 tag 的真仓库**：HEAD 与 tag 同树，即"刚发完版"的那一态。"""
-    for args in (("init", "-q"), ("add", "-A")):
-        code, out = _git(root, *args)
-        assert code == 0, "git %s 失败：%s" % (" ".join(args), out[:200])
-    code, out = _git(root, *GIT_ID, "commit", "-q", "-m", "baseline")
+    """把副本变成**带 tag 的真仓库**：HEAD 与 tag 同树，即"刚发完版"的那一态。
+
+    身份写进**副本的 local config**（不是全局、也不是逐条 `-c`）：`git tag -a` 没有身份
+    会直接失败，而 CI 的运行器没有全局 git 身份。
+    """
+    code, out = _git(root, "init", "-q")
+    assert code == 0, "git init 失败：%s" % out[:200]
+    for key, value in GIT_ID:
+        code, out = _git(root, "config", key, value)
+        assert code == 0, "git config %s 失败：%s" % (key, out[:200])
+    code, out = _git(root, "-c", "commit.gpgsign=false", "add", "-A")
+    assert code == 0, "git add 失败：%s" % out[:200]
+    code, out = _git(root, "commit", "-q", "-m", "baseline")
     assert code == 0, "git commit 失败：%s" % out[:200]
     code, out = _git(root, "tag", "-a", "v1.0.0", "-m", "baseline tag")
     assert code == 0, "git tag 失败：%s" % out[:200]
 
 
 def _git_commit_all(root: Path, message: str) -> None:
-    for args in (("add", "-A"), (*GIT_ID, "commit", "-q", "-m", message)):
+    for args in (("add", "-A"), ("commit", "-q", "-m", message)):
         code, out = _git(root, *args)
         assert code == 0, "git %s 失败：%s" % (" ".join(args), out[:200])
 
