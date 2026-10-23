@@ -148,3 +148,8 @@ Thumbs.db
 /verdict.md
 /diff.json
 /diff.md
+
+# 二次迭代的交接物（诊断报告 / 迭代路线 / 提示词 / 执行记录）。
+# 不是交付面：它们是**过程文档**，且执行记录里会引用本机路径与临时目录。
+# 与同批 certledger / extract-oracle / subset-audit 一致，**逐仓各自登记**（不跨仓批量改）。
+/update/

@@ -167,8 +167,13 @@ Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠
 
 每个 job 内**发布门 `--offline`** 与 `pytest`（470 passed）均为 success；
 offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 + 零第三方 import 断言。
-收尾提交 `d76829c` 相对 tag **只动** `plan/` `README` `tools/`（`POST_TAG_SCOPE`），
-`mailvault/` 与 `pyproject.toml` 零差异（`DELIVERABLE_UNCHANGED`）。
+收尾提交 `d76829c` 相对 tag **只动** `plan/` `README` `tools/`（`POST_TAG_SCOPE`）；
+`mailvault/`（源码）相对 `v1.0.0` **零差异**（`DELIVERABLE_UNCHANGED`）。
+`pyproject.toml` 在其后的 `bb19d9e` 有 4 行改动（PEP 639：`setuptools>=68`→`>=77`、
+`license={text}`→SPDX 表达式、删 `License::` classifier、加 `license-files`）——
+**不影响运行行为**（`mailvault/` 零差异），属于跨仓统一的技术债修复。
+这一处偏差**不隐藏**：`tools/check_release.py` 的「交付面未被改动」判据把它逐条比对，
+只放行**这一处已登记**的 hunk（见 §2.6）。
 
 ### 2.4 发布件复核（V6：真下载 + 解包）
 
@@ -183,9 +188,12 @@ offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 +
 
 | 模式 | 跑在 | 实测 |
 |---|---|---|
-| `--offline` | CI 两个 job + 本机 | **全绿**（7 条判据；不碰网络，`--network none` 容器里也全绿） |
-| `--pre-tag` | tag **之前**（本机） | tag 前全绿（9 条）；**tag 之后必然红**（`tag 尚未创建` 已不成立）——这正是三态分开的意义 |
-| `--online` | 推送 / Release **之后**（本机） | **全绿**（19 条判据） |
+| `--offline` | CI 两个 job + 本机 | **全绿**（**9** 条判据；不碰网络，`--network none` 容器里也全绿） |
+| `--pre-tag` | tag **之前**（本机） | tag 前全绿（**11** 条）；**tag 之后必然红**（`tag 尚未创建` 已不成立）——这正是三态分开的意义 |
+| `--online` | 推送 / Release **之后**（本机） | **全绿**（**21** 条判据） |
+
+> 判据条数是 **2026-10-23 实测**（补上 §2.6 的两条交付面判据之后）。tag 当时的条数是
+> `--offline` 7 / `--pre-tag` 9 / `--online` 19 —— 那三个数字保留在 §1.6 与 §2.4 的历史记录里。
 
 `--online` 的关键判据（不是"所有历史 run 都绿"——历史不可变，那样写只会得到一条永远红、
 然后被人删掉的假门）：
@@ -201,6 +209,39 @@ offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 +
 于是每推一次就要再改一次数字、再推一次——这正是"tag 树内不写自指字面值"那条纪律在计数上的翻版。
 处置：判据改落在**不变量**上（每次 push 恰好一条 run、两个数字彼此相等、计数锚在一个可核对的提交上），
 绝对数字只作为**截至某提交的快照**保留。
+
+### 2.6 交付面偏差登记（`DELIVERABLE_UNCHANGED` 的机器判据与它放行的那一处）
+
+`AGENTS.md` 硬性纪律第 1 条把「在 tag 之后改交付面（`mailvault/`、`pyproject.toml`）」列为禁止项。
+此前**没有任何机器判据**盯着它：`check_release.py --offline` 在仓库 HEAD 与 tag 导出树里都报全绿，
+于是 §2.3 那句「`pyproject.toml` 零差异」过期后无人发现（`bb19d9e`）。
+
+**2026-10-23 补上的判据**（`tools/check_release.py::deliverable_checks`，三档共用）：
+
+| 判据 | 判什么 | 怎么才算红 |
+|---|---|---|
+| **交付面未被改动** | `git diff --name-only <最近tag>..HEAD -- mailvault pyproject.toml` 必须为空，除非该文件在 `REGISTERED_DEVIATIONS` 里 | 出现未登记的文件；或已登记文件的**工作区 blob OID 与登记值不等**（再改一个字节就红） |
+| **登记偏差无僵尸条目** | 每条登记都必须**仍然存在** | 登记路径相对 tag 已无差异（例如下次发版把它正规化进了 tag）→ 登记行须一并删除 |
+| 无 `.git` 工作树（sdist 解包树） | 显式 **SKIP** | 不适用 ≠ 通过：输出里单列 SKIP 行，且「这轮跑了 N 条判据」不计它 |
+| 浅克隆（`--is-shallow-repository` = true） | **FAIL** | 历史被截断会让判据**空验成绿**；修法是 `actions/checkout` 的 `fetch-depth: 0` + `fetch-tags: true`（CI 已加） |
+
+**为什么登记的是 blob OID 而不是路径**：路径级白名单会把整份文件永久放行，之后对该文件的任何改动
+都看不见——那正是本判据要防的事。登记 `c756dfc4…`（`pyproject.toml` 当前工作区 blob）之后，
+只放行**这一处已知偏差**；再改一个字 hash 就变、判据立刻红（实测阳性对照，见 `update/03-执行记录.md`）。
+
+**放行的那一处偏差**：
+
+| 路径 | tag 上的 blob | 放行的 blob | 内容 | 为什么接受 |
+|---|---|---|---|---|
+| `pyproject.toml` | `67efb292…` | `c756dfc4…` | `bb19d9e` 的 PEP 639 迁移：`license={text}`→SPDX 字符串、`setuptools>=68`→`>=77`、删 `License::` classifier、加 `license-files` | `mailvault/`（源码）**零差异**，**不改运行行为**；属跨仓统一的技术债修复（同批 certledger / extract-oracle 同样迁移，PEP 639 硬期限 2027-02-18） |
+
+**这不是放宽判据，是如实登记**：偏差若消失（下次发版正常化），「登记偏差无僵尸条目」会报红要求删登记；
+偏差若扩大（多改一行），「交付面未被改动」会报红。两条判据互为反向约束，中间没有"永久绿"的位置。
+
+**对应变异**：`tools/verify_ast_gates.py` 的 **A09** —— 临时副本先被造成**带 tag 的真仓库**，
+植入前做**阳性对照**（两条交付面判据必须都是 PASS、且输出里没有本次植入的串），
+然后往 `mailvault/__init__.py` 追加一行并**提交**，断言 `check_release.py --offline` exit 1
+且「交付面未被改动」那条判据本身是 FAIL（不是只看整份输出里出现过某个词）。
 
 ---
 
@@ -224,3 +265,18 @@ offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 +
 > **口径**：`待首推` 已全部转为 `实现`（#3/#4/#5/#7）；两条 `不适用` 是**真的不适用**
 > 而不是没做——#6 由 CI 矩阵覆盖（本机无 3.11 通道），#8 只能等真实用户反馈。
 > 未验证项**不得**用"计划里写了"代替"已发生"（`plan/05` §5 口径）。
+
+### 2.7 tag 后追加的收尾（2026-10-23，未发新 tag）
+
+tag `v1.0.0` 与 Release **均未移动**。以下改动全部落在非交付面（`tools/` `tests/` `plan/` `.github/`）：
+
+| 项 | 内容 | 根因 / 判据 |
+|---|---|---|
+| §2.3 自述过期 | 原文"`mailvault/` 与 `pyproject.toml` 零差异"已不成立（`bb19d9e` 动了 `pyproject.toml`） | 改写为"源码零差异 + `pyproject.toml` 有 PEP 639 迁移、不影响运行行为"，见 §2.6 |
+| 新增发布门判据 | `交付面未被改动` + `登记偏差无僵尸条目`（`--offline` 档 7 → 9 条判据） | D2：本仓此前对 `AGENTS.md` 硬性纪律第 1 条**没有任何机器判据** |
+| 新增变异 A09 | 临时仓库先造成带 tag 的真仓库，**分两段**打靶（不提交 / 提交）+ **阳性对照** | 本仓方法论：每条判据都要被打靶；A 系列 8/8 → **9/9** |
+| CI 前置条件 | `actions/checkout` 加 `fetch-depth: 0` + `fetch-tags: true` | 新判据读 git 历史；默认浅克隆会让它**空验成绿**（判据本身把浅克隆判 FAIL，不是 SKIP） |
+| `verdict.md` 散落产物 | 仓库根 5,519 B 那份**不是手放的**：`tests/test_whatif.py::test_rua_is_not_part_of_the_exit_code` 调 CLI 时没给 `--md`，CLI 按契约写进 CWD（= 仓库根），**每次 pytest 都重生成** | 删除文件治不住 ⇒ 改测试显式给 `--md`，并加反自证断言"CWD 不得多出产物"。**这条是本轮唯一的确定性缺陷** |
+
+> **关于 `verdict.md` 的更正**：`00-诊断报告.md` 的 D3 把它描述为"散落产物"，方向对但归因不全——
+> 它不是一次性遗留，而是**测试每次跑都会重新生成**。所以本轮不只删文件，还修了生成点。

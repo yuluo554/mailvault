@@ -76,7 +76,7 @@ py -3.12 tools/check_release.py --offline    # 发布门（不碰网络的那一
 
 # 跑守门的变异验证（每条守门都必须能跑红，否则它是假门）
 py -3.12 tools/verify_layout_gate.py        # 11/11
-py -3.12 tools/verify_ast_gates.py          # 8/8
+py -3.12 tools/verify_ast_gates.py          # 9/9
 py -3.12 tools/verify_module_mutations.py   # 11/11（判定逻辑）
 
 # 跑测试（开发期需 pytest + pyyaml + cryptography；运行时零第三方依赖）

@@ -292,7 +292,7 @@ py -3.12 tools/check_sprint_layout.py
 
 # 1) 三类变异验证（改门/改判定后必跑）
 py -3.12 tools/verify_layout_gate.py       # 11/11 必须红
-py -3.12 tools/verify_ast_gates.py         # 8/8 必须红
+py -3.12 tools/verify_ast_gates.py         # 9/9 必须红
 py -3.12 tools/verify_module_mutations.py  # 11/11 必须红（每组 ~5–10s）
 
 # 2) 各守门
