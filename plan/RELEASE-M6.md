@@ -144,8 +144,14 @@ Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠
 | CI run id（修复后 tag `v1.0.0` 重指） | `39527171060` |
 | CI run id（收尾提交 `d76829c`） | `39528967472` |
 | CI run id（计数更新提交 `858f944`） | `39529331411` |
-| push 数 = run 数 | `6 = 6` |
-| 计数截至提交 | `858f944`（此后只改文档；「每次 push 恰好一条 run」这个不变量由 `--online` 断言，不再靠改数字维持） |
+| CI run id（提交 `4d7c576`） | `39530894621` |
+| CI run id（提交 `8255e58`） | `39531651003` |
+| CI run id（提交 `bb19d9e`，PEP 639） | `39894860514` |
+| CI run id（二次迭代收尾首推，**红**） | `39905723623` |
+| CI run id（修 A09 的 git 身份后，**红**） | `39906099706` |
+| CI run id（修"无 git 环境"后，**全绿**） | `39906391980` |
+| push 数 = run 数 | `12 = 12` |
+| 计数截至提交 | `31d85ee`（台账**逐条列到这次推送为止**：12 次 push 各一条 run，无漏无重。此后「每次 push 恰好一条 run」这个不变量由 `--online` 现场断言，不靠改数字维持） |
 | 远端 | `git@github.com:yuluo554/mailvault.git`（公开） |
 | GitHub Release | https://github.com/yuluo554/mailvault/releases/tag/v1.0.0 |
 | tag OID（annotated tag 对象） | `fbbd25fc10375e3affcb8ca995e020a98c9fe0ba` |
@@ -156,6 +162,25 @@ Actions 创建 **job 容器**时总是先建一个 user-defined network，再叠
 `git push --force` 重指到 `c84b0c8`。重指前该 tag **没有** Release、无人消费；
 重指后 tag run `39527171060` 五个 job 全绿。**交付面（`mailvault/` 与 `pyproject.toml`）
 在两次 tag 之间零差异**——改的只有 `.github/` 与 `plan/`。
+
+### 2.2a 二次迭代（2026-10-23）的 CI 实录：两条**只在 CI 显形**的缺陷
+
+本轮改动推送后，CI 连红两轮，两次都红在**本机无论怎么跑都跑不出来**的地方。
+两条都已修，第三轮全绿（run `39906391980`，5/5 job）。
+
+| 轮 | run | 红在哪 | 根因 | 本机为什么看不见 |
+|---|---|---|---|---|
+| 1 | `39905723623` | 两个 matrix job 的 `AST gate mutation verification` | A09 的临时仓库里 `git tag -a v1.0.0` 是**建 tag 对象**，需要 committer 身份；身份只加在 `commit` 上、没加在 `tag` 上 | 本机 `~/.gitconfig` 有全局身份，`git tag -a` 照样成功 |
+| 2 | `39906099706` | `offline no-network job`（4 个 matrix job 已全绿） | `offline.Dockerfile` 基于 `python:3.12-slim`，**镜像里没装 git**；新判据第一句 `git rev-parse` → `FileNotFoundError`，"不适用"变成"门崩掉" | 本机有 git，而且"没有 git 的环境"只能靠改 PATH 才模拟得出 |
+
+修法与验证：身份写进**副本自己的 local config**（一次设置、`tag`/`commit` 都继承）；
+`_git()` 先 `shutil.which("git")`，缺失返回 127，`deliverable_checks` 把 127 单独识别为
+**SKIP**（与"无 `.git` 工作树"分开措辞）。两条都在本机把 CI 环境**模拟出来**复现过：
+`HOME=<空> GIT_CONFIG_NOSYSTEM=1` 复现第 1 条（修复前红、修复后绿）；
+`PATH` 去掉 Git 复现第 2 条（7 条内容判据 + 2 条 SKIP，exit 0）。
+
+> 这是本仓第二次由"推送"而非本机跑出真实缺陷（第一次是 M6 的 `--network none` 容器冲突）。
+> 两轮红 run 都在上表里，`--online` 的「历史失败逐条登记」会盯着它们不被漏记。
 
 ### 2.3 CI 实录（修复后）
 
@@ -188,7 +213,7 @@ offline job 在 `docker run --network none` 里跑 `offline_smoke` + 发布门 +
 
 | 模式 | 跑在 | 实测 |
 |---|---|---|
-| `--offline` | CI 两个 job + 本机 | **全绿**（**9** 条判据；不碰网络，`--network none` 容器里也全绿） |
+| `--offline` | CI 两个 job + 本机 | **全绿**（**9** 条判据；不碰网络，`--network none` 容器里也全绿——容器**没有 git**，故其中 2 条交付面判据是 **SKIP**，即在容器里只有 7 条内容判据） |
 | `--pre-tag` | tag **之前**（本机） | tag 前全绿（**11** 条）；**tag 之后必然红**（`tag 尚未创建` 已不成立）——这正是三态分开的意义 |
 | `--online` | 推送 / Release **之后**（本机） | **全绿**（**21** 条判据） |
 
@@ -276,6 +301,8 @@ tag `v1.0.0` 与 Release **均未移动**。以下改动全部落在非交付面
 | 新增发布门判据 | `交付面未被改动` + `登记偏差无僵尸条目`（`--offline` 档 7 → 9 条判据） | D2：本仓此前对 `AGENTS.md` 硬性纪律第 1 条**没有任何机器判据** |
 | 新增变异 A09 | 临时仓库先造成带 tag 的真仓库，**分两段**打靶（不提交 / 提交）+ **阳性对照** | 本仓方法论：每条判据都要被打靶；A 系列 8/8 → **9/9** |
 | CI 前置条件 | `actions/checkout` 加 `fetch-depth: 0` + `fetch-tags: true` | 新判据读 git 历史；默认浅克隆会让它**空验成绿**（判据本身把浅克隆判 FAIL，不是 SKIP） |
+| A09 的 git 身份 | 身份写进**临时副本自己的 local config**（`git tag -a` 也要身份） | 首推 CI 两 job 全红：本机 `~/.gitconfig` 有身份，**看不出来**（run `39905723623`，见 §2.2a） |
+| 无 git 的环境 | `_git()` 先 `shutil.which("git")`，缺失返回 127 → 交付面判据识别为 **SKIP**（与"无 `.git` 工作树"分开措辞） | `offline.Dockerfile` 基于 `python:3.12-slim`，**镜像里没装 git** → 原来会 `FileNotFoundError` 崩掉（run `39906099706`，见 §2.2a） |
 | `verdict.md` 散落产物 | 仓库根 5,519 B 那份**不是手放的**：`tests/test_whatif.py::test_rua_is_not_part_of_the_exit_code` 调 CLI 时没给 `--md`，CLI 按契约写进 CWD（= 仓库根），**每次 pytest 都重生成** | 删除文件治不住 ⇒ 改测试显式给 `--md`，并加反自证断言"CWD 不得多出产物"。**这条是本轮唯一的确定性缺陷** |
 
 > **关于 `verdict.md` 的更正**：`00-诊断报告.md` 的 D3 把它描述为"散落产物"，方向对但归因不全——
