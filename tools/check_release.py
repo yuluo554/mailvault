@@ -6,7 +6,7 @@
 
 | 模式 | 什么时候跑 | 判什么 |
 |---|---|---|
-| `--offline` | 随时（**不碰网络**，CI 也跑这一档） | 发布内容齐备：版本三处一致、样例产物齐且干净、发布留档两栏齐 |
+| `--offline` | 随时（**不碰网络**，CI 也跑这一档） | 发布内容齐备：版本三处一致、样例产物齐且干净、发布留档两栏齐、**交付面未被改动** |
 | `--pre-tag` | `git tag` **之前**（本机） | `--offline` 的全部 + **tag 尚未创建** + **工作区干净** |
 | `--online` | 推送与 Release **之后**（本机） | `--offline` 的全部 + 远端存在 + tag 已推 + Release 在 + CI run 实录 |
 
@@ -16,6 +16,11 @@
 
 **为什么清单式的判据要落在这里而不是测试里**：这三条都不是"代码行为"，
 而是"发布现场"——`git`/`gh`/网络。测试拿不到这些，也没法在 CI 的四矩阵里跑。
+
+**为什么"交付面未被改动"落在 `--offline` 档**：`--offline` 的前提是"不碰网络"，
+**不是"不碰 git"**；把这条只放进 `--pre-tag`，等于只有本机手工跑才查得到，
+而 D1 的漂移正是这么漏掉的（`--offline` 在仓库 HEAD 与 tag 导出树里都报全绿）。
+无 `.git`（sdist 解包树、浅克隆）时**显式 SKIP —— 不是 PASS**。
 
 用法：
 
@@ -65,24 +70,52 @@ SNAPSHOT_ROW = re.compile(r"^\|\s*计数截至提交\s*\|\s*`?([0-9a-f]{7,40})`?
 #: Release 说明必须点到的三件套要素（`plan/05` §4.1）。
 RELEASE_KEYWORDS = ("verdict.json", "verdict.md", "fixture", "PSL")
 
+#: 交付面 = 打 tag 之后**不许再动**的面（`AGENTS.md` 硬性纪律第 1 条）。
+DELIVERABLE_PATHS = ("mailvault", "pyproject.toml")
+
+#: 已登记的「交付面偏差」：相对路径 → (允许的工作区 blob OID, 理由)。
+#:
+#: 为什么登记 **blob OID** 而不是「允许这个路径漂移」：路径级白名单会把整份文件永久放行，
+#: 于是登记之后对该文件的任何改动都看不见——那正是本判据要防的事。登记 blob 之后，
+#: **只放行这一处已知偏差**，再改一个字 hash 就变、判据立刻红。
+#:
+#: 为什么还要「僵尸检测」：偏差消失（例如下次发版把 `pyproject.toml` 正规化进 tag）之后，
+#: 这条登记必须一起删掉，否则它变成一条永远不被执行的白名单——本仓对登记表的一贯口径是
+#: 「登记表不能有僵尸条目」（`test_every_known_divergence_actually_happens` 是同一手法）。
+REGISTERED_DEVIATIONS: dict[str, tuple[str, str]] = {
+    "pyproject.toml": (
+        "c756dfc4ba55eaab446748b5b78f7a9518693e29",
+        "bb19d9e 的 PEP 639 迁移：`license` 表→SPDX 字符串 + `setuptools>=68`→`>=77` + "
+        "删 `License::` classifier + 加 `license-files`（mailvault/ 源码零差异，不改运行行为）",
+    ),
+}
+
 
 class Report:
     def __init__(self, mode: str) -> None:
         self.mode = mode
-        self.rows: list[tuple[str, bool, str]] = []
+        self.rows: list[tuple[str, str, str]] = []
 
     def check(self, label: str, ok: bool, detail: str = "") -> bool:
-        self.rows.append((label, bool(ok), detail))
+        self.rows.append((label, "PASS" if ok else "FAIL", detail))
         return bool(ok)
+
+    def skip(self, label: str, detail: str = "") -> None:
+        """不适用 ≠ 通过。SKIP 不进 FAIL 计数，但必须在输出里看得见。"""
+        self.rows.append((label, "SKIP", detail))
 
     def render(self) -> int:
         print("发布门 · 模式 %s" % self.mode)
         print("=" * 72)
-        for label, ok, detail in self.rows:
-            print("%-4s  %-34s %s" % ("PASS" if ok else "FAIL", label, detail))
-        failed = [row for row in self.rows if not row[1]]
+        for label, status, detail in self.rows:
+            print("%-4s  %-34s %s" % (status, label, detail))
+        failed = [row for row in self.rows if row[1] == "FAIL"]
+        skipped = [row for row in self.rows if row[1] == "SKIP"]
         print("=" * 72)
-        print("这轮跑了 %d 条判据" % len(self.rows))
+        print("这轮跑了 %d 条判据" % (len(self.rows) - len(skipped)))
+        if skipped:
+            print("其中 %d 条 SKIP（不适用，**不计为通过**）：%s"
+                  % (len(skipped), "、".join(row[0] for row in skipped)))
         print("结论: %s" % ("全绿" if not failed else "%d 项 FAIL" % len(failed)))
         return 1 if failed else 0
 
@@ -156,6 +189,126 @@ def content_checks(report: Report) -> None:
                  else RELEASE_DOC)
     report.check("发布留档（覆盖对账）", bool(COVERAGE.search(text)),
                  "缺『覆盖对账』小节" if not COVERAGE.search(text) else "在位")
+
+
+# ── 交付面未被改动（三种模式共用） ──────────────────────────────────────
+
+
+def _blob_oid(rel: str) -> str | None:
+    """工作区文件按 git 口径算 blob OID（可直接与 `git rev-parse <rev>:<path>` 比较）。"""
+    code, out = _git("-c", "core.quotePath=false", "hash-object", "--", rel)
+    return out if code == 0 and len(out) == 40 else None
+
+
+def deliverable_checks(report: Report) -> None:
+    """交付面（`mailvault/` + `pyproject.toml`）相对最近 tag 未被改动。
+
+    `AGENTS.md` 硬性纪律第 1 条把"在 tag 之后改交付面"列为禁止项，但此前**没有任何机器
+    判据**盯着它——于是 `plan/RELEASE-M6.md` §2.3 那句"`pyproject.toml` 零差异"过期后
+    在仓库 HEAD 与 tag 导出树里都报全绿，无人发现。
+
+    **比较的是 `<tag>` 与「工作区」**（`git diff <tag>`），不是只比提交：只比提交会漏掉
+    "改了还没提交"这一态——而那正是 `--offline` 最常被跑的时候。未跟踪的新文件另算
+    （`git diff` 看不见它们，但它们同样改动了交付面）。
+
+    「无 `.git`」「无 tag」显式 SKIP；「浅克隆」判 FAIL（历史被截断会让判据空验成绿）。
+    """
+    code, out = _git("rev-parse", "--is-inside-work-tree")
+    if code != 0 or out.strip() != "true":
+        report.skip("交付面未被改动", "无 .git 工作树（sdist 解包树）——不适用，**不计为通过**")
+        report.skip("登记偏差无僵尸条目", "无 .git 工作树——不适用，**不计为通过**")
+        return
+
+    # 浅克隆是**最危险**的一态：`.git` 在、命令也跑得动，但历史被截断，
+    # `git describe` 可能取到真值、`diff` 却看不见被截掉的那段 —— 判据会**空验成绿**。
+    # 所以这里判 FAIL 而不是 SKIP：修法是 `actions/checkout` 加 `fetch-depth: 0`。
+    code, shallow = _git("rev-parse", "--is-shallow-repository")
+    if code == 0 and shallow.strip() == "true":
+        detail = ("浅克隆仓库：历史被截断，本判据会空验 —— "
+                  "`actions/checkout` 需 `fetch-depth: 0`（+ `fetch-tags: true`）")
+        report.check("交付面未被改动", False, detail)
+        report.check("登记偏差无僵尸条目", False, detail)
+        return
+
+    code, tag_out = _git("describe", "--tags", "--abbrev=0")
+    tag = tag_out.strip()
+    if code != 0 or not tag:
+        report.skip("交付面未被改动", "仓库里没有 tag——无从比较，**不计为通过**")
+        report.skip("登记偏差无僵尸条目", "仓库里没有 tag——无从比较，**不计为通过**")
+        return
+
+    # ① 已提交的漂移（`<tag>..HEAD`）与 ② 工作区里未提交的漂移（`git diff <tag>`），
+    # 后者是前者的超集；两者都要，因为报告里要说清"是提交里的还是工作区里的"。
+    #
+    # `-c core.quotePath=false`：否则非 ASCII 路径会被 git 转义成 `"plan/\346..."`，
+    # 于是它既对不上 `REGISTERED_DEVIATIONS` 的 key，也会在报告里显示成乱码
+    # （本仓 `plan/` 下本来就有中文文件名）。
+    quoted = ("-c", "core.quotePath=false")
+    code, committed_out = _git(*quoted, "diff", "--name-only",
+                               "%s..HEAD" % tag, "--", *DELIVERABLE_PATHS)
+    code2, worktree_out = _git(*quoted, "diff", "--name-only", tag, "--", *DELIVERABLE_PATHS)
+    if code != 0 or code2 != 0:
+        report.check("交付面未被改动", False,
+                     "`git diff %s` 跑失败：%s" % (tag, (committed_out or worktree_out)[:120]))
+        report.check("登记偏差无僵尸条目", False, "同上：列不出交付面改动")
+        return
+
+    committed = [line.strip() for line in committed_out.splitlines() if line.strip()]
+    tracked = [line.strip() for line in worktree_out.splitlines() if line.strip()]
+
+    # ③ 未跟踪的新文件：`git diff` 看不见，但它们同样进了交付面。
+    code3, status_out = _git(*quoted, "status", "--porcelain", "--untracked-files=all",
+                             "--", *DELIVERABLE_PATHS)
+    untracked = [line[3:].strip() for line in status_out.splitlines()
+                 if line.startswith("??")] if code3 == 0 else []
+
+    unregistered = [rel for rel in tracked if rel not in REGISTERED_DEVIATIONS]
+    uncommitted = [rel for rel in tracked if rel not in committed]
+
+    # 登记的是 **blob OID**，所以"登记了就放行"不成立：再改一个字 hash 就变、判据立刻红。
+    bad_blob = []
+    for rel in tracked:
+        if rel not in REGISTERED_DEVIATIONS:  # 未登记的在上面已经算过，这里不重复报
+            continue
+        expected = REGISTERED_DEVIATIONS[rel][0]
+        actual = _blob_oid(rel)
+        if actual != expected:
+            bad_blob.append("%s（工作区 %s ≠ 登记 %s）"
+                            % (rel, (actual or "?")[:12], expected[:12]))
+
+    reasons = []
+    if unregistered:
+        reasons.append("%s 之后改了未登记的交付面文件：%s" % (tag, ", ".join(unregistered)))
+    if untracked:
+        reasons.append("交付面新增未跟踪文件：%s" % ", ".join(untracked))
+    if bad_blob:
+        reasons.append("已登记偏差的字节对不上：%s" % "；".join(bad_blob))
+    if not reasons:
+        extra = ("（其中 %s 尚未提交）" % ", ".join(uncommitted)) if uncommitted else ""
+        detail = ("%s 之后交付面零差异" % tag if not tracked
+                  else "%s 之后仅已登记偏差：%s%s" % (tag, ", ".join(tracked), extra))
+    else:
+        detail = "；".join(reasons)
+    report.check("交付面未被改动", not reasons, detail)
+
+    # 僵尸登记：偏差已经不存在了（例如下次发版把它正规化进了 tag），登记行必须一起删。
+    # 判的是**已提交历史**（`<tag>..HEAD`）：登记表描述的是"发布之后我动了什么"，
+    # 工作区里临时还原某文件不代表这条登记该删。
+    # HEAD 恰好就是 tag 时这一态没有"相对 tag 的偏差"可言（tag 推送那一刻会走到这里，
+    # 与 `--pre-tag` 在 tag 后必然红是同一类态问题），所以 SKIP 而不是 FAIL。
+    code, head = _git("rev-parse", "HEAD")
+    code2, tag_commit = _git("rev-parse", "%s^{commit}" % tag)
+    if code == 0 and code2 == 0 and head.strip() == tag_commit.strip():
+        report.skip("登记偏差无僵尸条目",
+                    "HEAD 就是 `%s` —— 这一态没有『相对 tag 的偏差』可言" % tag)
+        return
+    zombie = [rel for rel in REGISTERED_DEVIATIONS if rel not in committed]
+    report.check(
+        "登记偏差无僵尸条目",
+        not zombie,
+        ("登记已过期（`%s` 里该路径已无差异，登记行须一并删除）：%s" % (tag, ", ".join(zombie)))
+        if zombie else "登记的 %d 处偏差都仍然存在" % len(REGISTERED_DEVIATIONS),
+    )
 
 
 # ── 模式：--pre-tag ────────────────────────────────────────────────────
@@ -346,6 +499,7 @@ def main(argv: list[str] | None = None) -> int:
     mode = "--offline" if args.offline else ("--pre-tag" if args.pre_tag else "--online")
     report = Report(mode)
     content_checks(report)
+    deliverable_checks(report)
     if args.pre_tag:
         pretag_checks(report)
     if args.online:

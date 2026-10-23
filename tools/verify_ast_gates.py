@@ -7,6 +7,11 @@
 为什么必须做这一步：一条"永远返回 0"的门与一条"项目确实干净"的门，输出一模一样。
 只有植入违规仍绿，才能确定它是假门。
 
+**A09 是本批唯一的异型**：`check_release.py` 的「交付面未被改动」判的是 git 状态，
+所以那个临时副本要先被造成**带 tag 的真仓库**（`_prepare_release_history`），
+并且**分两段打靶**（不提交 / 提交，对应判据里的两条代码路径），
+外加**阳性对照**（植入前必须是绿的）。这两种"本该红却不红"的形态，正是它要防的。
+
 用法：
     py -3.12 tools/verify_ast_gates.py
 退出码：0 全部如期变红 / 1 有门没红（= 假门）。
@@ -90,7 +95,25 @@ CASES = [
         "# MUTANT\n\n（本行是为变异验证植入的假 README，不含版本号）\n",
         "README含v1.0.0=False",
     ),
+    (
+        # 「交付面未被改动」判据（AGENTS.md 硬性纪律第 1 条）必须真的能红。
+        #
+        # 这一条与前八条**不同型**：它判的是 git 状态，不是文件内容。所以临时副本必须
+        # **先成为一个带 tag 的真仓库**，否则判据会走 SKIP 分支——而"无 .git 就 SKIP"
+        # 正是最容易写成"永远绿"的地方，因此这里额外做**阳性对照**：植入前必须是绿的。
+        #
+        # 而且它有**两条代码路径**（工作区 diff / 已提交历史），只打一条 = 另一条是
+        # 未经证伪的假门。所以分两段：先**不提交**（走工作区分支），再**提交**（走历史分支）。
+        "A09 发布门：tag 后改动 mailvault/（交付面漂移）",
+        "tools/check_release.py",
+        "mailvault/__init__.py",
+        "\n# MUTANT: tag 之后改了一行源码\n",
+        "改了未登记的交付面文件",
+    ),
 ]
+
+#: 需要先把临时副本变成**带 tag 的真 git 仓库**的变异（判据读的是 git 状态）。
+NEEDS_GIT = {"A09 发布门：tag 后改动 mailvault/（交付面漂移）"}
 
 #: 有些门需要显式模式参数（发布门三种模式只能选一个）。
 GATE_ARGV = {
@@ -137,6 +160,63 @@ def _run(root: Path, script: str) -> tuple[int, str]:
     return result.returncode, result.stdout.decode("utf-8", "replace")
 
 
+def _git(root: Path, *args: str) -> tuple[int, str]:
+    result = subprocess.run(["git", *args], cwd=str(root),
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    return result.returncode, result.stdout.decode("utf-8", "replace").strip()
+
+
+#: 临时仓库的提交身份（不能依赖被测机器的全局 git 配置）。
+GIT_ID = ("-c", "user.name=ast-mut", "-c", "user.email=ast-mut@example.invalid",
+          "-c", "commit.gpgsign=false")
+
+
+def _init_git_repo(root: Path) -> None:
+    """把副本变成**带 tag 的真仓库**：HEAD 与 tag 同树，即"刚发完版"的那一态。"""
+    for args in (("init", "-q"), ("add", "-A")):
+        code, out = _git(root, *args)
+        assert code == 0, "git %s 失败：%s" % (" ".join(args), out[:200])
+    code, out = _git(root, *GIT_ID, "commit", "-q", "-m", "baseline")
+    assert code == 0, "git commit 失败：%s" % out[:200]
+    code, out = _git(root, "tag", "-a", "v1.0.0", "-m", "baseline tag")
+    assert code == 0, "git tag 失败：%s" % out[:200]
+
+
+def _git_commit_all(root: Path, message: str) -> None:
+    for args in (("add", "-A"), (*GIT_ID, "commit", "-q", "-m", message)):
+        code, out = _git(root, *args)
+        assert code == 0, "git %s 失败：%s" % (" ".join(args), out[:200])
+
+
+def _prepare_release_history(root: Path) -> None:
+    """造出与本仓**同型**的发布历史，好让"已登记偏差"这一态是真实的。
+
+    三段：① tag 上的 `pyproject.toml` 比登记内容多了**一行注释**（= 登记前的样子，
+    仍然可解析，所以内容类判据照样全绿）；② 去掉那行注释提交一次 —— 恢复出来的字节
+    正是工作区原件的字节，blob OID 因此**等于** `REGISTERED_DEVIATIONS` 里登记的那个，
+    于是"仅已登记偏差"这一态是**真的**、不是被构造放行；③ 之后才植入变异。
+
+    为什么要费这个劲：如果让 tag 与 HEAD 同树（`_init_git_repo` 的默认形态），
+    `REGISTERED_DEVIATIONS` 里的 `pyproject.toml` 在那个副本里就是一条**僵尸登记**，
+    于是植入后会出现**两条** FAIL，"这次的 exit 1 是不是来自我植入的那处"就说不清了。
+    """
+    pyproject = root / "pyproject.toml"
+    original = pyproject.read_bytes()
+    pyproject.write_bytes(original + b"# baseline: tag \xe4\xb8\x8a\xe7\x9a\x84 pyproject\n")
+    _init_git_repo(root)
+    pyproject.write_bytes(original)
+    _git_commit_all(root, "PEP 639")
+
+
+def _status_of(output: str, label: str) -> str | None:
+    """取某条判据的 PASS/FAIL/SKIP（不是"整份输出里出现过这个词"）。"""
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] in {"PASS", "FAIL", "SKIP"} and label in line:
+            return parts[0]
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="AST/扫描门的变异验证")
     parser.add_argument("--root", default=None)
@@ -148,10 +228,39 @@ def main(argv: list[str] | None = None) -> int:
         tmp = Path(tempfile.mkdtemp(prefix="ast-mut-"))
         try:
             _copy_repo(tmp)
-            _plant(tmp, rel, payload, append=rel.startswith("mailvault/"))
-            code, out = _run(tmp, script)
-            hit = needle in out
-            rows.append((label, script, code == 1 and hit, code, hit))
+            if label in NEEDS_GIT:
+                # 这一型的判据读 git 状态，所以副本必须先成为仓库；且必须有**阳性对照**：
+                # 植入之前两条交付面判据自己是绿的、且内容里没有本次植入的串，
+                # 否则"植入后 exit 1"可能来自与本变异无关的原因（假阳性）。
+                _prepare_release_history(tmp)
+                before_code, before_out = _run(tmp, script)
+                positive = (_status_of(before_out, "交付面未被改动") == "PASS"
+                            and _status_of(before_out, "登记偏差无僵尸条目") == "PASS"
+                            and before_code == 0 and needle not in before_out)
+                if not positive:
+                    print("  阳性对照失败：植入前交付面判据未全绿（exit=%s）" % before_code)
+
+                # 第一段：**不提交** —— 打的是"工作区 diff"那条代码路径。
+                _plant(tmp, rel, payload, append=True)
+                dirty_code, dirty_out = _run(tmp, script)
+                dirty_hit = (needle in dirty_out
+                             and _status_of(dirty_out, "交付面未被改动") == "FAIL")
+
+                # 第二段：**提交** —— 打的是"已提交历史"那条代码路径。
+                # 两条路径必须都能红，否则其中一条是未经证伪的假门。
+                _git_commit_all(tmp, "mutant: 交付面漂移")
+                code, out = _run(tmp, script)
+                hit = needle in out
+                rows.append((label, script,
+                             positive and dirty_code == 1 and dirty_hit
+                             and code == 1 and hit
+                             and _status_of(out, "交付面未被改动") == "FAIL",
+                             code, hit))
+            else:
+                _plant(tmp, rel, payload, append=rel.startswith("mailvault/"))
+                code, out = _run(tmp, script)
+                hit = needle in out
+                rows.append((label, script, code == 1 and hit, code, hit))
         except AssertionError as exc:
             rows.append((label, script, False, None, False))
             print("  构造失败: %s" % exc)

@@ -22,7 +22,14 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python-version: ["3.11", "3.13"]
     steps:
+      # `fetch-depth: 0` + `fetch-tags: true` 是**发布门新判据的前置条件**：
+      # `check_release.py` 的「交付面未被改动」比较的是 `<最近 tag>..HEAD`，
+      # 默认的浅克隆（depth 1、且不取 tag）会让它看不见 tag、看不见被截掉的历史，
+      # 于是那条判据**空验成绿**。浅克隆态由判据自己判 FAIL（不是 SKIP），这里给正确配置。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/setup-python@v5
         with:
@@ -37,7 +44,7 @@ jobs:
       - name: Layout gate mutation verification (11 mutations must go red)
         run: python tools/verify_layout_gate.py
 
-      - name: AST gate mutation verification (8 mutations must go red)
+      - name: AST gate mutation verification (9 mutations must go red)
         run: python tools/verify_ast_gates.py
 
       - name: Module mutation verification (11 semantic faults must go red)
