@@ -593,10 +593,19 @@ def test_rua_is_not_part_of_the_exit_code(tmp_path):
         "whatif", "--snapshot", str(directory / "snap.json"),
         "--eml", str(directory / "message.eml"), "--query", str(directory / "query.json"),
         "--change", "all=-all", "--json", str(tmp_path / "c.json"),
+        # `--md` 必须显式给：契约是"不给 `--json`/`--md` 时写进 `--out-dir`，默认当前工作目录"，
+        # 而 pytest 的 CWD 是仓库根 —— 原先这条测试因此在仓库根留下了一份 `verdict.md`
+        # （D3 的根因：那份 5,519 B 的散落产物每次跑测试都会被重新生成）。
+        "--md", str(tmp_path / "c.md"),
     ]
     without = main(base_args)
     with_rua = main(base_args[:1] + ["--rua", str(FIXTURE_ROOT / "rua.json")] + base_args[1:])
     assert without == with_rua == 1
+    # 反自证：**显式给了 `--md` 就不许再往 CWD 写一份**。原先这条测试既没给 `--md`，
+    # 又在仓库根跑，于是每次 pytest 都在仓库根重新生成一份 5,519 B 的 `verdict.md`
+    # （D3 的根因——删掉文件治不住，必须治住生成点）。
+    assert not (tmp_path / "verdict.md").exists()
+    assert [p.name for p in sorted(tmp_path.iterdir())] == ["c.json", "c.md"]
     artifact = json.loads((tmp_path / "c.json").read_text(encoding="utf-8"))
     assert artifact["whatif"]["rua"]["status"] == "complete"
 
